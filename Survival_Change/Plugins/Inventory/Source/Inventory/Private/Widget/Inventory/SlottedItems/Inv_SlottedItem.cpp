@@ -1,13 +1,18 @@
-﻿#include "Widget/Inventory/SlottedItems/Inv_SlottedItem.h"
+#include "Widget/Inventory/SlottedItems/Inv_SlottedItem.h"
 
 #include "Blueprint/DragDropOperation.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "InventoryManagement/Components/Inv_FindItemComponent.h"
 #include "InventoryManagement/Components/Inv_InventoryComponent.h"
+#include "InventoryManagement/Components/Inv_RequestComponent.h"
 #include "InventoryManagement/Utils/Inv_InventoryStatics.h"
 #include "Items/Inv_InventoryItem.h"
+#include "Player/Inv_PlayerController.h"
 #include "Widget/Inventory/Spatial/Inv_InventoryGrid.h"
 #include "Widget/Inventory/HoverItem/Inv_HoverItem.h"
+#include "Widget/Inventory/InventoryBase/Inv_InventoryBase.h"
+#include "Widget/ItemDescription/Inv_ItemDescription.h"
 
 FReply UInv_SlottedItem::NativeOnMouseButtonDown(const FGeometry& Geometry, const FPointerEvent& MouseEvent)
 {
@@ -27,30 +32,48 @@ FReply UInv_SlottedItem::NativeOnMouseButtonUp(const FGeometry& InGeometry, cons
 
 void UInv_SlottedItem::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	UInv_InventoryStatics::ItemHovered(GetOwningPlayer(), InventoryItem.Get());
+	UInv_InventoryItem* Item = InventoryItem.Get();
+	if (!Item)
+		return;
+
+	UInv_InventoryStatics::ItemHovered(InventoryGrid->GetInventoryComponent(), Item);
+	ItemDescription = CreateWidget<UInv_ItemDescription>(GetOwningPlayer(), ItemDescriptionClass);
+	if (!ItemDescription)
+		return;
+	Item->GetItemManifest().AssimilateInventoryFragment(ItemDescription);
+	SetToolTip(ItemDescription);
 }
 
 void UInv_SlottedItem::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 {
 	UInv_InventoryStatics::ItemUnhovered(GetOwningPlayer());
+	SetToolTip(nullptr);
+	ItemDescription = nullptr;
 }
 
 void UInv_SlottedItem::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent,
 	UDragDropOperation*& OutOperation)
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
-	
+	SetToolTip(nullptr);
+	ItemDescription = nullptr;
 	bIsMouseDown = false;
-	
+
+	UInv_InventoryItem* Item = InventoryItem.Get();
+	if (!Item || !InventoryGrid.IsValid())
+		return;
+
 	UInv_HoverItem* HoverItem = CreateWidget<UInv_HoverItem>(GetOwningPlayer(), HoverItemClass);
-	HoverItem->SetInventoryItem(InventoryItem.Get());
+	if (!HoverItem)
+		return;
+	HoverItem->SetInventoryItem(Item);
+	HoverItem->SetCol(InventoryGrid->GetCol());
 	InventoryGrid->SetHoverItem(HoverItem);
 	UDragDropOperation* DragOp = NewObject<UDragDropOperation>();
-	
+
 	DragOp->Payload = HoverItem;
 	DragOp->DefaultDragVisual = HoverItem;
 	OutOperation = DragOp;
-	UInv_InventoryStatics::ItemUnhovered(GetOwningPlayer());
 }
 
 bool UInv_SlottedItem::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
@@ -58,9 +81,29 @@ bool UInv_SlottedItem::NativeOnDrop(const FGeometry& InGeometry, const FDragDrop
 {
 	Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 	APlayerController* PlayerController = GetOwningPlayer();
-	UInv_InventoryComponent* IC = UInv_InventoryStatics::GetInventoryComponent(PlayerController);
 	UInv_HoverItem* HoverItem = Cast<UInv_HoverItem>(InOperation->Payload);
-	IC->Server_MoveItem(HoverItem->GetInventoryItem(), InventoryGrid->GetResult(), InventoryGrid->GetItemDropIndex());
+	AInv_PlayerController* Controller = Cast<AInv_PlayerController>(PlayerController);
+	if (!Controller || !HoverItem || !InventoryGrid.IsValid())
+		return false;
+
+	UInv_InventoryItem* ItemToTransfer = HoverItem->GetInventoryItem();
+	if (!ItemToTransfer)
+		return false;
+
+	UInv_InventoryComponent* SourceComp = ItemToTransfer->GetInventoryComponent();
+	if (!IsValid(SourceComp))
+		return false;
+
+	UInv_FindItemComponent* FindItemComponent = Cast<UInv_FindItemComponent>(ItemToTransfer->GetInventoryComponent());
+	if (FindItemComponent == InventoryGrid->GetInventoryComponent())
+	{
+		FindItemComponent->Server_MoveItem(ItemToTransfer, InventoryGrid->GetResult(), InventoryGrid->GetItemDropIndex());
+	}
+	else if (UInv_RequestComponent* RequestComp = Controller->FindComponentByClass<UInv_RequestComponent>())
+	{
+		RequestComp->TransferItem(ItemToTransfer, InventoryGrid->GetResult(), InventoryGrid->GetItemDropIndex(), InventoryGrid->GetInventoryComponent());
+	}
+	InventoryGrid->GetHoverSourceMenu()->ClearHoverItem();
 	return true;
 }
 

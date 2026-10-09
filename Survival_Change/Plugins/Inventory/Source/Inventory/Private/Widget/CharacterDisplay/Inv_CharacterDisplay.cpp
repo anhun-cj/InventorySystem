@@ -46,7 +46,7 @@ void UInv_CharacterDisplay::NativeTick(const FGeometry& MyGeometry, float InDelt
 	LastPosition = CurrentPosition;
 	CurrentPosition = UWidgetLayoutLibrary::GetMousePositionOnViewport(GetOwningPlayer());
 	
-	const float HorizontalOffset = CurrentPosition.X - LastPosition.X;
+	const float HorizontalOffset = LastPosition.X - CurrentPosition.X;
 	if (!Mesh.IsValid())
 		return;
 	Mesh->AddRelativeRotation(FRotator(0.0f, HorizontalOffset, 0.0f));

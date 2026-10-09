@@ -1,9 +1,13 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "Inv_PlayerController.generated.h"
 
+class UInv_FindItemComponent;
+class USphereComponent;
+class UInv_RequestComponent;
+class UInv_WareHouseWidget;
 class UInputMappingContext;
 class UInputAction;
 class UInv_HUDWidget;
@@ -18,6 +22,7 @@ public:
 	AInv_PlayerController();
 
 	virtual void Tick(float DeltaTime) override;
+	bool IsOpenInventoryMenu() const;
 
 	UFUNCTION(BlueprintCallable)
 	void ToggleInventory();
@@ -33,6 +38,14 @@ private:
 	void TraceForItem();
 
 	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
+	
+	TWeakObjectPtr<UInv_InventoryComponent> OpenInventoryComponent;
+	
+	UPROPERTY(EditAnywhere)
+	TObjectPtr<UInv_FindItemComponent> OtherInventoryComponent;
+	
+	UPROPERTY(EditAnywhere)
+	TObjectPtr<UInv_RequestComponent> RequestComponent;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Input Mappings")
 	TArray<UInputMappingContext*> DefaultMappingContexts;
@@ -57,6 +70,10 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
 	double TraceLength;
+
+	// 射线尖端的球形检测半径；为 0 时仅使用线性射线
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory", meta = (ClampMin = "0.0"))
+	double TipSphereRadius = 50.0;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
 	TEnumAsByte<ECollisionChannel> ItemTraceChannel;

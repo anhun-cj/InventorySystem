@@ -10,8 +10,12 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Items/Inv_InventoryItem.h"
+#include "Items/Manifest/Inv_ItemManifest.h"
 #include "Blueprint/WidgetTree.h"
+#include "InventoryManagement/Components/Inv_FindItemComponent.h"
 #include "InventoryManagement/Components/Inv_InventoryComponent.h"
+#include "InventoryManagement/Components/Inv_RequestComponent.h"
+#include "Player/Inv_PlayerController.h"
 #include "Widget/Inventory/GridSlot/Inv_EquippedGridSlot.h"
 #include "Widget/Inventory/HoverItem/Inv_HoverItem.h"
 #include "Widget/Inventory/SlottedItems/Inv_EquippedSlotItem.h"
@@ -20,15 +24,16 @@ void UInv_SpatialInventory::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 
-	Button_Equippable->OnClicked.AddDynamic(this, &ThisClass::ShowAll);
+	SetIsFocusable(true);
+	/*Button_Equippable->OnClicked.AddDynamic(this, &ThisClass::ShowAll);
 	Button_Consumable->OnClicked.AddDynamic(this, &ThisClass::ShowConsumable);
-	Button_Craftable->OnClicked.AddDynamic(this, &ThisClass::ShowCraftable);
+	Button_Craftable->OnClicked.AddDynamic(this, &ThisClass::ShowCraftable);*/
 
 	Grid_All->SetOwningCanvasPanel(CanvasPanel);
+	Grid_All->SetHoverSourceMenu(this);
+	Grid_Other->SetHoverSourceMenu(this);
 	
-	ShowAll();
-	
-	WidgetTree->ForEachWidget([this](UWidget* Widget)
+	Survival_ActorEquipment->WidgetTree->ForEachWidget([this](UWidget* Widget)
 	{
 		UInv_EquippedGridSlot* EquippedGridSlot = Cast<UInv_EquippedGridSlot>(Widget);
 		if (IsValid(EquippedGridSlot))
@@ -66,9 +71,7 @@ void UInv_SpatialInventory::EquippedGridSlotClicked(UInv_EquippedGridSlot* Equip
 	InventoryComponent->Server_EquipSlotClicked(ItemToEquip, nullptr);
 	// 不要本地广播 OnItemEquipped：服务器 Multicast 在单机/主机/客户端都会执行，
 	// 本地再广播一次会导致 OnEquip（如"力量增加"）执行两次
-
-	if (ActiveGrid.IsValid())
-		ActiveGrid->ClearHoverItem();
+	
 }
 
 void UInv_SpatialInventory::EquippedSlottedItemClicked(UInv_EquippedSlotItem* EquippedSlotItem)
@@ -97,21 +100,35 @@ FReply UInv_SpatialInventory::NativeOnMouseButtonDown(const FGeometry& InGeometr
 	return FReply::Handled();
 }
 
-void UInv_SpatialInventory::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
-{
-	Super::NativeTick(MyGeometry, InDeltaTime);
-	if (!IsValid(ItemDescription))
-		return;
-	SetItemDescriptionSizeAndPosition(ItemDescription, CanvasPanel);
-}
-
 bool UInv_SpatialInventory::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
 	UDragDropOperation* InOperation)
 {
-	Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 	UInv_HoverItem* HoverItem = Cast<UInv_HoverItem>(InOperation->Payload);
-	InventoryComponent->Server_DropItem(HoverItem->GetInventoryItem());
+	APlayerController* PlayerController = GetOwningPlayer();
+	AInv_PlayerController* Controller = Cast<AInv_PlayerController>(PlayerController);
+	UInv_RequestComponent* RequestComp = Controller->FindComponentByClass<UInv_RequestComponent>();
+	
+	if (UInv_FindItemComponent* FindItemComponent = Cast<UInv_FindItemComponent>(HoverItem->GetInventoryItem()->GetInventoryComponent()))
+	{
+		FInv_SpaceQueryResult Result;
+		FindItemComponent->Server_MoveItem(HoverItem->GetInventoryItem(), Result, 0);
+		ClearHoverItem();
+		return true;
+	}
+	
+	RequestComp->DropItem(HoverItem->GetInventoryItem());
+	ClearHoverItem();
 	return true;
+}
+
+FReply UInv_SpatialInventory::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::B)
+	{
+		InventoryComponent->ToggleInventoryMenu();
+		return FReply::Handled();
+	}
+	return Super::NativeOnKeyDown(InGeometry,InKeyEvent);
 }
 
 FInv_SlotAvailabilityResult UInv_SpatialInventory::HasRoomForItem(UInv_ItemComponent* ItemComponent) const
@@ -121,7 +138,7 @@ FInv_SlotAvailabilityResult UInv_SpatialInventory::HasRoomForItem(UInv_ItemCompo
 
 void UInv_SpatialInventory::OnItemHovered(UInv_InventoryItem* InventoryItem)
 {
-	const FInv_ItemManifest& Manifest = InventoryItem->GetItemManifest();
+	/*const FInv_ItemManifest& Manifest = InventoryItem->GetItemManifest();
 	
 	UInv_ItemDescription* Description = GetItemDescription();
 	Description->SetVisibility(ESlateVisibility::Collapsed);
@@ -134,13 +151,13 @@ void UInv_SpatialInventory::OnItemHovered(UInv_InventoryItem* InventoryItem)
 		GetItemDescription()->SetVisibility(ESlateVisibility::HitTestInvisible);
 	});
 	
-	GetOwningPlayer()->GetWorldTimerManager().SetTimer(DescriptionTimer, DescriptionTimerDelegate, DescriptionTimerDelay, false);
+	GetOwningPlayer()->GetWorldTimerManager().SetTimer(DescriptionTimer, DescriptionTimerDelegate, DescriptionTimerDelay, false);*/
 }
 
 void UInv_SpatialInventory::OnItemUnhovered()
 {
-	GetItemDescription()->SetVisibility(ESlateVisibility::Collapsed);
-	GetOwningPlayer()->GetWorldTimerManager().ClearTimer(DescriptionTimer);
+	/*GetItemDescription()->SetVisibility(ESlateVisibility::Collapsed);
+	GetOwningPlayer()->GetWorldTimerManager().ClearTimer(DescriptionTimer);*/
 }
 
 bool UInv_SpatialInventory::HasHoveredItem() const
@@ -152,9 +169,11 @@ bool UInv_SpatialInventory::HasHoveredItem() const
 
 UInv_HoverItem* UInv_SpatialInventory::GetHoverItem() const
 {
-	if (!ActiveGrid.IsValid())
-		return nullptr;
-	return ActiveGrid->GetHoverItem();
+	if (Grid_All->HasHoveredItem())
+		return Grid_All->GetHoverItem();
+	if (Grid_Other->HasHoveredItem())
+		return Grid_Other->GetHoverItem();
+	return nullptr;
 }
 
 float UInv_SpatialInventory::GetTileSize() const
@@ -165,20 +184,12 @@ float UInv_SpatialInventory::GetTileSize() const
 void UInv_SpatialInventory::SetInventoryComponent(UInv_InventoryComponent* Inventory)
 {
 	InventoryComponent = Inventory;
-}
-
-UInv_ItemDescription* UInv_SpatialInventory::GetItemDescription()
-{
-	if (IsValid(ItemDescription))
-		return ItemDescription;
-	ItemDescription = CreateWidget<UInv_ItemDescription>(GetOwningPlayer(), ItemDescriptionClass);
-	CanvasPanel->AddChild(ItemDescription);
-	return ItemDescription;
+	InventoryBindEvent();
 }
 
 void UInv_SpatialInventory::ShowAll()
 {
-	SetActiveGrid(Grid_All, Button_Equippable);
+	//SetActiveGrid(Grid_All, Button_Equippable);
 }
 
 void UInv_SpatialInventory::ShowConsumable()
@@ -191,9 +202,6 @@ void UInv_SpatialInventory::ShowCraftable()
 
 void UInv_SpatialInventory::DisableButton(UButton* Button) const
 {
-	Button_Equippable->SetIsEnabled(true);
-	Button_Consumable->SetIsEnabled(true);
-	Button_Craftable->SetIsEnabled(true);
 	Button->SetIsEnabled(false);
 }
 
@@ -213,14 +221,14 @@ void UInv_SpatialInventory::SetActiveGrid(UInv_InventoryGrid* Grid, UButton* But
 
 void UInv_SpatialInventory::SetItemDescriptionSizeAndPosition(UInv_ItemDescription* Description, UCanvasPanel* Canvas) const
 {
-	UCanvasPanelSlot* ItemDescriptionCPS = UWidgetLayoutLibrary::SlotAsCanvasSlot(Description);
+	/*UCanvasPanelSlot* ItemDescriptionCPS = UWidgetLayoutLibrary::SlotAsCanvasSlot(Description);
 	if (!IsValid(ItemDescriptionCPS))
 		return;
 	const FVector2D ItemDescriptionSize = Description->GetBoxSize();
 	ItemDescriptionCPS->SetSize(ItemDescriptionSize);
 	
 	FVector2D ClampedPosition = UInv_WidgetUtils::GetClampedWidgetPosition(UInv_WidgetUtils::GetWidgetSize(Canvas), ItemDescriptionSize, UWidgetLayoutLibrary::GetMousePositionOnViewport(GetOwningPlayer()));
-	ItemDescriptionCPS->SetPosition(ClampedPosition);
+	ItemDescriptionCPS->SetPosition(ClampedPosition);*/
 }
 
 bool UInv_SpatialInventory::CanEquipHoverItem(UInv_EquippedGridSlot* Equipment, const FGameplayTag& Tag) const
@@ -285,7 +293,18 @@ void UInv_SpatialInventory::BroadcastSlotClickedDelegates(UInv_InventoryItem* It
 	InventoryComponent->Server_EquipSlotClicked(ItemToEquip, ItemToUnequip);
 }
 
-UInv_InventoryItem* UInv_SpatialInventory::FindNoFillItemByType(const FGameplayTag& Tag, TSet<UInv_InventoryItem*> Items) const
+UInv_InventoryItem* UInv_SpatialInventory::FindNoFillItemLike(const FInv_ItemManifest& Source, TSet<UInv_InventoryItem*> Items) const
 {
-	return InventoryComponent->FindNoFillItemByType(Tag, Items);
+	return InventoryComponent->FindNoFillItem(Source, Items);
+}
+
+void UInv_SpatialInventory::InventoryBindEvent() const
+{
+	Grid_All->BindInventoryEvent(InventoryComponent.Get());
+}
+
+void UInv_SpatialInventory::ClearHoverItem() const
+{
+	Grid_All->SetHoverItem(nullptr);
+	Grid_Other->SetHoverItem(nullptr);
 }

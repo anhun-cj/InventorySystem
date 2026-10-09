@@ -3,9 +3,13 @@
 #include "Blueprint/DragDropOperation.h"
 #include "Items/Inv_InventoryItem.h"
 #include "Components/Image.h"
+#include "InventoryManagement/Components/Inv_FindItemComponent.h"
 #include "InventoryManagement/Components/Inv_InventoryComponent.h"
+#include "InventoryManagement/Components/Inv_RequestComponent.h"
 #include "InventoryManagement/Utils/Inv_InventoryStatics.h"
+#include "Player/Inv_PlayerController.h"
 #include "Widget/Inventory/HoverItem/Inv_HoverItem.h"
+#include "Widget/Inventory/InventoryBase/Inv_InventoryBase.h"
 #include "Widget/Inventory/Spatial/Inv_InventoryGrid.h"
 #include "Widget/ItemPopUp/Inv_ItemPopUp.h"
 
@@ -46,6 +50,9 @@ void UInv_GridSlot::NativeOnDragDetected(const FGeometry& InGeometry, const FPoi
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 	bIsMouseDown = false;
 	
+	if (InventoryItem.IsValid())
+		return;
+	
 	UInv_HoverItem* HoverItem = CreateWidget<UInv_HoverItem>(GetOwningPlayer(), HoverItemClass);
 	HoverItem->SetInventoryItem(InventoryItem.Get());
 	
@@ -60,9 +67,24 @@ bool UInv_GridSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEve
 {
 	Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 	APlayerController* PlayerController = GetOwningPlayer();
-	UInv_InventoryComponent* IC = UInv_InventoryStatics::GetInventoryComponent(PlayerController);
 	UInv_HoverItem* HoverItem = Cast<UInv_HoverItem>(InOperation->Payload);
-	IC->Server_MoveItem(HoverItem->GetInventoryItem(), InventoryGrid->GetResult(), InventoryGrid->GetItemDropIndex());
+	AInv_PlayerController* Controller = Cast<AInv_PlayerController>(PlayerController);
+	if (!Controller || !HoverItem || !InventoryGrid.IsValid())
+		return false;
+
+	UInv_InventoryItem* ItemToTransfer = HoverItem->GetInventoryItem();
+	if (!ItemToTransfer)
+		return false;
+	UInv_FindItemComponent* FindItemComponent = Cast<UInv_FindItemComponent>(ItemToTransfer->GetInventoryComponent());
+	if (FindItemComponent == InventoryGrid->GetInventoryComponent())
+	{
+		FindItemComponent->Server_MoveItem(ItemToTransfer, InventoryGrid->GetResult(), InventoryGrid->GetItemDropIndex());
+	}
+	else if (UInv_RequestComponent* RequestComp = Controller->FindComponentByClass<UInv_RequestComponent>())
+	{
+		RequestComp->TransferItem(ItemToTransfer, InventoryGrid->GetResult(), InventoryGrid->GetItemDropIndex(), InventoryGrid->GetInventoryComponent());
+	}
+	InventoryGrid->GetHoverSourceMenu()->ClearHoverItem();
 	return true;
 }
 
@@ -73,9 +95,9 @@ void UInv_GridSlot::SetInventoryItem(UInv_InventoryItem* Item)
 
 void UInv_GridSlot::SetItemPopUp(UInv_ItemPopUp* PopUp)
 {
-	ItemPopUp = PopUp;
+	/*ItemPopUp = PopUp;
 	ItemPopUp->SetGridIndex(GetTileIndex());
-	ItemPopUp->OnNativeDestruct.AddUObject(this, &UInv_GridSlot::OnItemPopUpDestruct);
+	ItemPopUp->OnNativeDestruct.AddUObject(this, &UInv_GridSlot::OnItemPopUpDestruct);*/
 }
 
 UInv_ItemPopUp* UInv_GridSlot::GetItemPopUp() const

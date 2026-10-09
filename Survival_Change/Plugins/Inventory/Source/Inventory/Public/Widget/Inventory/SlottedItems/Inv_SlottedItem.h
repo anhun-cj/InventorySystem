@@ -7,6 +7,8 @@
 #include "Inv_SlottedItem.generated.h"
 
 
+class UInv_ItemDescription;
+class UInv_ItemDefinition;
 class UInv_InventoryGrid;
 class UInv_HoverItem;
 class UTextBlock;
@@ -52,6 +54,12 @@ private:
 	TObjectPtr<UTextBlock> Text_StackCount;
 	
 	TWeakObjectPtr<UInv_InventoryGrid> InventoryGrid;
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TSubclassOf<UInv_ItemDescription> ItemDescriptionClass;
+	
+	UPROPERTY()
+	TObjectPtr<UInv_ItemDescription> ItemDescription;
 	
 	int32 GridIndex;
 	

@@ -3,6 +3,7 @@
 #include "InventoryManagement/Components/Inv_InventoryComponent.h"
 #include "Items/Components/Inv_ItemComponent.h"
 #include "Items/Fragments/Inv_ItemFragment.h"
+#include "Items/Manifest/Inv_ItemManifest.h"
 
 TArray<FInv_InventoryEntry> FInv_InventoryFastArray::GetAllItems()const
 {
@@ -53,9 +54,11 @@ void FInv_InventoryFastArray::PostReplicatedChange(const TArrayView<int32> Chang
 
 UInv_InventoryItem* FInv_InventoryFastArray::AddEntry(UInv_ItemComponent* ItemComponent, int32 Count, int32 GridIndex)
 {
-	check(OwnerComponent);
+	if (!IsValid(OwnerComponent))
+		return nullptr;
 	AActor* OwningActor = OwnerComponent->GetOwner();
-	check(OwningActor->HasAuthority());
+	if (!OwningActor->HasAuthority())
+		return nullptr;
 	
 	UInv_InventoryComponent* IC = Cast<UInv_InventoryComponent>(OwnerComponent);
 	if (!IsValid(IC))
@@ -78,14 +81,26 @@ UInv_InventoryItem* FInv_InventoryFastArray::AddEntry(UInv_ItemComponent* ItemCo
 	return NewEntry.Item;
 }
 
-UInv_InventoryItem* FInv_InventoryFastArray::AddEntry(UInv_InventoryItem* Item)
+UInv_InventoryItem* FInv_InventoryFastArray::AddEntry(UInv_InventoryItem* Item, int32 GridIndex)
 {
-	check(OwnerComponent);
+	if (!IsValid(OwnerComponent))
+		return nullptr;
 	AActor* OwningActor = OwnerComponent->GetOwner();
-	check(OwningActor->HasAuthority());
+	if (!OwningActor->HasAuthority())
+		return nullptr;
+
+	UInv_InventoryComponent* IC = Cast<UInv_InventoryComponent>(OwnerComponent);
+	if (!IsValid(IC))
+		return nullptr;
 
 	FInv_InventoryEntry& NewEntry = Entries.AddDefaulted_GetRef();
 	NewEntry.Item = Item;
+	// 跨背包转移时物品会换属主组件，必须重新注册为目标组件的复制子对象，
+	// 否则客户端收不到物品的 fragment/堆叠数据
+	IC->AddRepSubObj(Item);
+	NewEntry.Item->SetGridIndex(GridIndex);
+	NewEntry.Item->SetOldGridIndex(GridIndex);
+	NewEntry.Item->SetItemIndex(Entries.Num() - 1);
 
 	MarkItemDirty(NewEntry);
 
@@ -94,41 +109,43 @@ UInv_InventoryItem* FInv_InventoryFastArray::AddEntry(UInv_InventoryItem* Item)
 
 void FInv_InventoryFastArray::ChangeEntryIndex(const UInv_InventoryItem* Item, const int32 Index)
 {
-	check(OwnerComponent);
+	if (!IsValid(OwnerComponent))
+		return;
 	AActor* OwningActor = OwnerComponent->GetOwner();
-	check(OwningActor->HasAuthority());
+	if (!OwningActor->HasAuthority())
+		return;
 	
 	UInv_InventoryComponent* IC = Cast<UInv_InventoryComponent>(OwnerComponent);
 	if (!IsValid(IC))
 		return;
-	UInv_InventoryItem* OldItem = FindItemByIndex(Index);
-	if (!IsValid(OldItem))
-	{
-		//AddEntry(ItemComponent);
+
+	if (!Entries.IsValidIndex(Item->GetItemIndex()))
 		return;
-	}
-	
 	FInv_InventoryEntry& Entry = Entries[Item->GetItemIndex()];
-	
+
 	MarkItemDirty(Entry);
 }
 
 void FInv_InventoryFastArray::ChangeEntry(const UInv_InventoryItem* Item, const int32 Count)
 {
-	check(OwnerComponent);
+	if (!IsValid(OwnerComponent))
+		return;
 	AActor* OwningActor = OwnerComponent->GetOwner();
-	check(OwningActor->HasAuthority());
+	if (!OwningActor->HasAuthority())
+		return;
 	
 	UInv_InventoryComponent* IC = Cast<UInv_InventoryComponent>(OwnerComponent);
 	if (!IsValid(IC))
 		return;
 	
-	UInv_InventoryItem* OldItem = FindFirstNoFillItemByType(Item->GetItemManifest().GetItemType());
+	UInv_InventoryItem* OldItem = FindFirstNoFillItemLike(Item->GetItemManifest());
 	if (!IsValid(OldItem))
 	{
 		//AddEntry(Item);
 		return;
 	}
+	if (!Entries.IsValidIndex(OldItem->GetItemIndex()))
+		return;
 	FInv_InventoryEntry& Entry = Entries[OldItem->GetItemIndex()];
 	FInv_StackableFragment* StackableFragment = Entry.Item->GetItemManifestMutable().GetFragmentOfTypeMutable<FInv_StackableFragment>();
 	if (!StackableFragment)
@@ -140,9 +157,11 @@ void FInv_InventoryFastArray::ChangeEntry(const UInv_InventoryItem* Item, const 
 
 void FInv_InventoryFastArray::ChangeEntryByIndex(const UInv_InventoryItem* Item, const int32 Count)
 {
-	check(OwnerComponent);
+	if (!IsValid(OwnerComponent))
+		return;
 	AActor* OwningActor = OwnerComponent->GetOwner();
-	check(OwningActor->HasAuthority());
+	if (!OwningActor->HasAuthority())
+		return;
 
 	UInv_InventoryComponent* IC = Cast<UInv_InventoryComponent>(OwnerComponent);
 	if (!IsValid(IC))
@@ -162,35 +181,50 @@ void FInv_InventoryFastArray::ChangeEntryByIndex(const UInv_InventoryItem* Item,
 
 void FInv_InventoryFastArray::RemoveEntry(UInv_InventoryItem* Item)
 {
-	check(OwnerComponent);
+	if (!IsValid(OwnerComponent))
+		return;
 	AActor* OwningActor = OwnerComponent->GetOwner();
-	check(OwningActor->HasAuthority());
+	if (!OwningActor->HasAuthority())
+		return;
 
 	UInv_InventoryComponent* IC = Cast<UInv_InventoryComponent>(OwnerComponent);
 	if (!IsValid(IC))
 		return;
-
-	//直接用 ItemIndex 定位条目，避免按 OldGridIndex 匹配到错误的物品
-	if (!Entries.IsValidIndex(Item->GetItemIndex()))
+	
+	if (!IsValid(Item) || !Entries.IsValidIndex(Item->GetItemIndex()))
 		return;
 	Entries.RemoveAt(Item->GetItemIndex());
+
+	//整体排序可能改变,须重算所有物品的 ItemIndex，
+	for (int32 i = 0; i < Entries.Num(); ++i)
+	{
+		if (IsValid(Entries[i].Item) && Entries[i].Item->GetItemIndex() != i)
+			Entries[i].Item->SetItemIndex(i);
+	}
+
 	MarkArrayDirty();
 }
 
-UInv_InventoryItem* FInv_InventoryFastArray::FindNoFillItemByType(const FGameplayTag& ItemType, TSet<UInv_InventoryItem*> Items) const
+void FInv_InventoryFastArray::ClearAllItems()
 {
-	const FInv_InventoryEntry* FoundItem = Entries.FindByPredicate([this, ItemType, &Items](const FInv_InventoryEntry& Entry)
+	Entries.Empty();
+	MarkArrayDirty();
+}
+
+UInv_InventoryItem* FInv_InventoryFastArray::FindNoFillItemLike(const FInv_ItemManifest& Source, TSet<UInv_InventoryItem*> Items) const
+{
+	const FInv_InventoryEntry* FoundItem = Entries.FindByPredicate([this, &Source, &Items](const FInv_InventoryEntry& Entry)
 	{
-		return IsValid(Entry.Item) && Entry.Item->GetItemManifest().GetItemType().MatchesTagExact(ItemType) && !CheckItemFilled(Entry.Item) && !Items.Contains(Entry.Item);
+		return IsValid(Entry.Item) && FInv_ItemManifest::AreSameItem(Entry.Item->GetItemManifest(), Source) && !CheckItemFilled(Entry.Item) && !Items.Contains(Entry.Item);
 	});
 	return  FoundItem ? FoundItem->Item : nullptr;
 }
 
-UInv_InventoryItem* FInv_InventoryFastArray::FindFirstNoFillItemByType(const FGameplayTag& ItemType) const
+UInv_InventoryItem* FInv_InventoryFastArray::FindFirstNoFillItemLike(const FInv_ItemManifest& Source) const
 {
-	const FInv_InventoryEntry* FoundItem = Entries.FindByPredicate([this, ItemType](const FInv_InventoryEntry& Entry)
+	const FInv_InventoryEntry* FoundItem = Entries.FindByPredicate([this, &Source](const FInv_InventoryEntry& Entry)
 	{
-		return IsValid(Entry.Item) && Entry.Item->GetItemManifest().GetItemType().MatchesTagExact(ItemType) && !CheckItemFilled(Entry.Item);
+		return IsValid(Entry.Item) && FInv_ItemManifest::AreSameItem(Entry.Item->GetItemManifest(), Source) && !CheckItemFilled(Entry.Item);
 	});
 	return  FoundItem ? FoundItem->Item : nullptr;
 }

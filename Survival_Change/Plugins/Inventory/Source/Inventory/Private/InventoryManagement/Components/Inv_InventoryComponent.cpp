@@ -2,9 +2,14 @@
 
 #include "Items/Components/Inv_ItemComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/Pawn.h"
+#include "InventoryManagement/Components/Inv_FindItemComponent.h"
 #include "Widget/Inventory/InventoryBase/Inv_InventoryBase.h"
 #include "Items/Inv_InventoryItem.h"
+#include "Items/Manifest/Inv_ItemManifest.h"
 #include "Items/Fragments/Inv_ItemFragment.h"
+#include "Player/Inv_PlayerController.h"
 #include "Widget/Inventory/HoverItem/Inv_HoverItem.h"
 #include "Widget/Inventory/Spatial/Inv_InventoryGrid.h"
 #include "Widget/Inventory/Spatial/Inv_SpatialInventory.h"
@@ -27,7 +32,7 @@ void UInv_InventoryComponent::MoveItemOnServer(UInv_InventoryItem* SourceItem, c
 void UInv_InventoryComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
+
 	DOREPLIFETIME(UInv_InventoryComponent, InventoryList);
 }
 
@@ -52,6 +57,8 @@ void UInv_InventoryComponent::TryAddItem(UInv_ItemComponent* ItemComponent)
 
 void UInv_InventoryComponent::Multicast_RemoveSlottedItem_Implementation(UInv_InventoryItem* SourceItem)
 {
+	if (!IsValid(SourceItem))
+		return;
 	OnRemoveSlottedItem.Broadcast(SourceItem, SourceItem->GetGridIndex());
 }
 
@@ -64,14 +71,33 @@ void UInv_InventoryComponent::ChangeItemIndex(UInv_InventoryItem* Item, int32 In
 {
 	Item->SetGridIndex(Index);
 	InventoryList.ChangeEntryIndex(Item, Index);
+	Item->SetInventoryComponent(this);
 	OnItemChanged.Broadcast(Item);
+}
+
+void UInv_InventoryComponent::Server_AddInventoryItem_Implementation(const int32 GridIndex, UInv_InventoryItem* Item, int32 StackCount, bool IsInGridSlots)
+{
+	if (IsInGridSlots)
+	{
+		InventoryList.ChangeEntryByIndex(Item, StackCount);
+		Server_RemoveSlottedItem(Item);
+		Item->SetInventoryComponent(this);
+		OnItemChanged.Broadcast(Item);
+		return;
+	}
+	UInv_InventoryItem* NewItem =  InventoryList.AddEntry(Item, GridIndex);
+	NewItem->SetInventoryComponent(this);
+	OnItemAdded.Broadcast(NewItem);
 }
 
 void UInv_InventoryComponent::Server_MoveItem_Implementation(UInv_InventoryItem* SourceItem, const FInv_SpaceQueryResult& Result, int32 DropIndex)
 {
+	if (!IsValid(SourceItem))
+		return;
 	const FInv_StackableFragment* SourceStackable = SourceItem->GetItemManifest().GetFragmentOfType<FInv_StackableFragment>();
 	const int32 DragStackCount = SourceStackable ? SourceStackable->GetStackCount() : 1;
 	Server_RemoveSlottedItem(SourceItem);
+	SourceItem->SetInventoryComponent(this);
 	if (Result.bHasSpace)
 	{
 		SourceItem->SetGridIndex(DropIndex);
@@ -80,10 +106,11 @@ void UInv_InventoryComponent::Server_MoveItem_Implementation(UInv_InventoryItem*
 	}
 	else if (Result.bAllowItemDown)
 	{
-		if (Result.ValidItems.Num() == 1 && Result.ValidItems[0]->GetItemManifest().GetItemType().MatchesTagExact(SourceItem->GetItemManifest().GetItemType()))
+		if (Result.ValidItems.Num() == 1 && FInv_ItemManifest::AreSameItem(Result.ValidItems[0]->GetItemManifest(), SourceItem->GetItemManifest()))
 		{
 			UInv_InventoryItem* Item = Result.ValidItems[0].Get();
 			Server_RemoveSlottedItem(Item);
+			Item->SetInventoryComponent(this);
 			if (const FInv_StackableFragment* StackableFragment = Result.ValidItems[0]->GetItemManifest().GetFragmentOfType<FInv_StackableFragment>())
 			{
 				const int32 DropItemCount = StackableFragment->GetStackCount();
@@ -107,7 +134,7 @@ void UInv_InventoryComponent::Server_MoveItem_Implementation(UInv_InventoryItem*
 					}
 					else
 					{
-						InventoryList.RemoveEntry(SourceItem);
+						Server_RemoveItem(SourceItem);
 					}
 				}
 			}
@@ -124,6 +151,7 @@ void UInv_InventoryComponent::Server_MoveItem_Implementation(UInv_InventoryItem*
 			{
 				UInv_InventoryItem* Item = Result.ValidItems[i].Get();
 				Server_RemoveSlottedItem(Item);
+				Item->SetInventoryComponent(this);
 				ChangeItemIndex(Item, Result.ItemMoveIndices[i]);
 			}
 			ChangeItemIndex(SourceItem, DropIndex);
@@ -152,31 +180,23 @@ void UInv_InventoryComponent::Server_AddItem_Implementation(UInv_ItemComponent* 
 {
 	if (IsInGridSlots)
 	{
+		if (!IsValid(Item))
+			return;
 		InventoryList.ChangeEntry(Item, StackCount);
 		Server_RemoveSlottedItem(Item);
+		Item->SetInventoryComponent(this);
 		OnItemChanged.Broadcast(Item);
 	}
 	else
 	{
-		UInv_InventoryItem* NewItem =  InventoryList.AddEntry(ItemComponent, StackCount, GridIndex);
+		if (!IsValid(ItemComponent))
+			return;
+		UInv_InventoryItem* NewItem = InventoryList.AddEntry(ItemComponent, StackCount, GridIndex);
+		if (!IsValid(NewItem))
+			return;
+		NewItem->SetInventoryComponent(this);
 		OnItemAdded.Broadcast(NewItem);
 	}
-}
-
-void UInv_InventoryComponent::Server_AddNewItem_Implementation(UInv_ItemComponent* ItemComponent, int32 StackCount)
-{
-	
-	if (GetOwner()->GetNetMode() == NM_ListenServer || GetOwner()->GetNetMode() == NM_Standalone)
-	{
-		
-	}
-	ItemComponent->PickedUp();
-}
-
-void UInv_InventoryComponent::Server_AddStacksToItem_Implementation(UInv_ItemComponent* ItemComponent, int32 StackCount,
-	int32 Remainder)
-{
-	
 }
 
 void UInv_InventoryComponent::Server_DropItem_Implementation(UInv_InventoryItem* Item)
@@ -186,9 +206,22 @@ void UInv_InventoryComponent::Server_DropItem_Implementation(UInv_InventoryItem*
 	OnItemRemoved.Broadcast(Item);
 }
 
-void UInv_InventoryComponent::SpawnDroppedItem(UInv_InventoryItem* Item) const
+UInv_ItemComponent* UInv_InventoryComponent::SpawnDroppedItem(UInv_InventoryItem* Item) const
 {
-	const APawn* OwningPawn = OwningController->GetPawn();
+	if (!IsValid(Item))
+		return nullptr;
+
+	//不依赖缓存的 OwningController（专用服务器上菜单不创建，它可能为空），直接从 Owner 取
+	const APawn* OwningPawn = nullptr;
+	if (const APlayerController* PC = Cast<APlayerController>(GetOwner()))
+		OwningPawn = PC->GetPawn();
+	if (!IsValid(OwningPawn) && OwningController.IsValid())
+		OwningPawn = OwningController->GetPawn();
+	if (!IsValid(OwningPawn))
+	{
+		return nullptr;
+	}
+
 	FVector RotateForward = OwningPawn->GetActorForwardVector();
 	RotateForward = RotateForward.RotateAngleAxis(FMath::FRandRange(DropSpawnAngleMin, DropSpawnAngleMax), FVector::UpVector);
 	FVector SpawnLocation = OwningPawn->GetActorLocation() + RotateForward;
@@ -196,12 +229,12 @@ void UInv_InventoryComponent::SpawnDroppedItem(UInv_InventoryItem* Item) const
 	FRotator SpawnRotation = FRotator::ZeroRotator;
 	
 	FInv_ItemManifest& ItemManifest = Item->GetItemManifestMutable();
-	ItemManifest.SpawnPickUpActor(this, SpawnLocation, SpawnRotation);
+	return ItemManifest.SpawnPickUpActor(this, SpawnLocation, SpawnRotation);
 }
 
-UInv_InventoryItem* UInv_InventoryComponent::FindNoFillItemByType(const FGameplayTag& Tag, const TSet<UInv_InventoryItem*> Items) const
+UInv_InventoryItem* UInv_InventoryComponent::FindNoFillItem(const FInv_ItemManifest& Source, const TSet<UInv_InventoryItem*> Items) const
 {
-	return InventoryList.FindNoFillItemByType(Tag, Items);
+	return InventoryList.FindNoFillItemLike(Source, Items);
 }
 
 void UInv_InventoryComponent::Server_ConsumeItem_Implementation(UInv_InventoryItem* Item, int32 GridIndex)
@@ -225,6 +258,15 @@ void UInv_InventoryComponent::Multicast_EquipSlotClicked_Implementation(UInv_Inv
 	OnItemUnequipped.Broadcast(ItemToUnequip);
 }
 
+void UInv_InventoryComponent::Server_RemoveItem(UInv_InventoryItem* Item)
+{
+	if (!IsValid(Item))
+		return;
+	RemoveRepSubObj(Item);
+	InventoryList.RemoveEntry(Item);
+	OnItemRemoved.Broadcast(Item);
+}
+
 void UInv_InventoryComponent::ToggleInventoryMenu()
 {
 	if (bInventoryMenuOpen)
@@ -235,14 +277,23 @@ void UInv_InventoryComponent::ToggleInventoryMenu()
 	{
 		OpenInventoryMenu();
 	}
-	OnInventoryMenuToggled.Broadcast(bInventoryMenuOpen);
 }
 
 void UInv_InventoryComponent::AddRepSubObj(UObject* SubObj)
 {
-	if (IsUsingRegisteredSubObjectList() && IsReadyForReplication() && IsValid(SubObj))
+	if (!IsValid(SubObj))
+		return;
+	if (IsUsingRegisteredSubObjectList() && IsReadyForReplication())
 	{
 		AddReplicatedSubObject(SubObj);
+	}
+}
+
+void UInv_InventoryComponent::RemoveRepSubObj(UObject* SubObj)
+{
+	if (IsUsingRegisteredSubObjectList() && IsReadyForReplication() && IsValid(SubObj))
+	{
+		RemoveReplicatedSubObject(SubObj);
 	}
 }
 
@@ -255,11 +306,14 @@ void UInv_InventoryComponent::BeginPlay()
 
 void UInv_InventoryComponent::ConstructInventory()
 {
-	OwningController = Cast<APlayerController>(GetOwner());
-	checkf(OwningController.IsValid(), TEXT("库存组件应该在玩家控制器上"));
-	if (!OwningController->IsLocalController())
+	OwningController = GetWorld()->GetFirstPlayerController();
+	if (!OwningController.IsValid() || !OwningController->IsLocalController())
+		return;
+	if (!IsValid(InventoryMenuClass))
 		return;
 	InventoryMenu = CreateWidget<UInv_InventoryBase>(OwningController.Get(), InventoryMenuClass);
+	if (!IsValid(InventoryMenu))
+		return;
 	InventoryMenu->AddToViewport();
 	InventoryMenu->SetInventoryComponent(this);
 	CloseInventoryMenu();
@@ -273,9 +327,18 @@ void UInv_InventoryComponent::OpenInventoryMenu()
 	bInventoryMenuOpen = true;
 	if (!OwningController.IsValid())
 		return;
-	FInputModeGameAndUI InputMode;
+	FInputModeUIOnly InputMode;
+	InputMode.SetWidgetToFocus(InventoryMenu->TakeWidget());
 	OwningController->SetInputMode(InputMode);
 	OwningController->SetShowMouseCursor(true);
+	OwningController->FindComponentByClass<UInv_FindItemComponent>()->SetInventoryGrid(InventoryMenu->GetOtherGrid());
+	if (Cast<AInv_PlayerController>(GetOwner()))
+	{
+		InventoryMenu->GetInventoryGrid()->SetHoverSourceMenu(InventoryMenu);
+		InventoryMenu->GetOtherGrid()->SetHoverSourceMenu(InventoryMenu);
+		InventoryMenu->GetOtherGrid()->BindInventoryEvent(OwningController->FindComponentByClass<UInv_FindItemComponent>());
+		InventoryMenu->GetOtherGrid()->InitInventory();
+	}
 }
 
 void UInv_InventoryComponent::CloseInventoryMenu()
@@ -289,5 +352,6 @@ void UInv_InventoryComponent::CloseInventoryMenu()
 	FInputModeGameOnly InputMode;
 	OwningController->SetInputMode(InputMode);
 	OwningController->SetShowMouseCursor(false);
+	InventoryMenu->GetOtherGrid()->UnBindInventoryEvent();
 }
 

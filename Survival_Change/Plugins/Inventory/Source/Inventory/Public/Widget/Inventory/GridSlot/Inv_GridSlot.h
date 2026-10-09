@@ -43,6 +43,7 @@ public:
 	
 	void SetGreen() const;
 	void SetRed() const;
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void SetNormal() const;
 	
 	void SetUnoccupiedTexture() const;
@@ -51,6 +52,8 @@ public:
 	FGridSlotEvent GridSlotClicked;
 	FGridSlotEvent GridSlotHoverer;
 	FGridSlotEvent GridSlotUnhovered;
+	
+	TWeakObjectPtr<UInv_InventoryGrid> InventoryGrid;
 private:
 	int32 TileIndex{INDEX_NONE};
 	int32 StackCount{0};
@@ -78,15 +81,7 @@ private:
 	FSlateBrush Brush_Occupied;
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
-	FSlateBrush Brush_Selected;
-	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
-	FSlateBrush Brush_GrayedOut;
-	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
 	TSubclassOf<UInv_HoverItem> HoverItemClass;
-	
-	TWeakObjectPtr<UInv_InventoryGrid> InventoryGrid;
 	
 	UFUNCTION()
 	void OnItemPopUpDestruct(UUserWidget* Menu);

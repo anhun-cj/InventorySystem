@@ -31,7 +31,7 @@ public:
 	static void ForEch2D(TArray<T>& Array, int32 Index, const FIntPoint& Range2D, int32 GridCol, const FuncT& Function);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	static void ItemHovered(APlayerController* PlayerController, UInv_InventoryItem* Item);
+	static void ItemHovered(UInv_InventoryComponent* InventoryComponent, UInv_InventoryItem* Item);
 	
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	static void ItemUnhovered(APlayerController* PC);

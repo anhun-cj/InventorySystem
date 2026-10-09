@@ -1,4 +1,4 @@
-﻿#include "Items/Inv_ItemTags.h"
+#include "Items/Inv_ItemTags.h"
 
 namespace GameItems
 {
@@ -18,6 +18,13 @@ namespace GameItems
 		namespace Masks
 		{
 			UE_DEFINE_GAMEPLAY_TAG(SteelMask, "GameItems.Equipment.Masks.SteelMask")
+		}
+
+		namespace Slot
+		{
+			UE_DEFINE_GAMEPLAY_TAG(Weapon, "GameItems.Equipment.Slot.Weapon")
+			UE_DEFINE_GAMEPLAY_TAG(Back, "GameItems.Equipment.Slot.Back")
+			UE_DEFINE_GAMEPLAY_TAG(Face, "GameItems.Equipment.Slot.Face")
 		}
 	}
 	namespace Consumables
@@ -43,5 +50,16 @@ namespace GameItems
 		UE_DEFINE_GAMEPLAY_TAG(FireFernFruit, "GameItems.Craftables.FireFernFruit")
 		UE_DEFINE_GAMEPLAY_TAG(LuminDaisy, "GameItems.Craftables.LuminDaisy")
 		UE_DEFINE_GAMEPLAY_TAG(ScorchPetalBlossom, "GameItems.Craftables.ScorchPetalBlossom")
+	}
+}
+
+namespace Item
+{
+	namespace Stat
+	{
+		UE_DEFINE_GAMEPLAY_TAG(AttackPower, "Item.Stat.AttackPower")
+		UE_DEFINE_GAMEPLAY_TAG(Strength, "Item.Stat.Strength")
+		UE_DEFINE_GAMEPLAY_TAG(Health, "Item.Stat.Health")
+		UE_DEFINE_GAMEPLAY_TAG(Mana, "Item.Stat.Mana")
 	}
 }

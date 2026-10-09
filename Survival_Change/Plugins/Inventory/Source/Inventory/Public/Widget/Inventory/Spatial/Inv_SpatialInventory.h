@@ -1,12 +1,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Inv_InventoryGrid.h"
 #include "../InventoryBase/Inv_InventoryBase.h"
 #include "Inv_SpatialInventory.generated.h"
 
 class UInv_InventoryComponent;
 class UInv_EquippedSlotItem;
 struct FGameplayTag;
+struct FInv_ItemManifest;
 class UInv_EquippedGridSlot;
 class UInv_ItemDescription;
 class UCanvasPanel;
@@ -21,8 +23,8 @@ class INVENTORY_API UInv_SpatialInventory : public UInv_InventoryBase
 public:
 	virtual void NativeOnInitialized() override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	
 	virtual FInv_SlotAvailabilityResult HasRoomForItem(UInv_ItemComponent* ItemComponent) const override;
 	virtual void OnItemHovered(UInv_InventoryItem* InventoryItem) override;
@@ -31,46 +33,34 @@ public:
 	virtual UInv_HoverItem* GetHoverItem() const override;
 	virtual float GetTileSize() const override;
 	
-	virtual  void SetInventoryComponent(UInv_InventoryComponent* Inventory) override;
-	UInv_InventoryItem* FindNoFillItemByType(const FGameplayTag& Tag, TSet<UInv_InventoryItem*> Items) const;
+	virtual void SetInventoryComponent(UInv_InventoryComponent* Inventory) override;
+	UInv_InventoryItem* FindNoFillItemLike(const FInv_ItemManifest& Source, TSet<UInv_InventoryItem*> Items) const;
+	virtual UInv_InventoryGrid* GetOtherGrid() const override { return Grid_Other;}
 	UFUNCTION(BlueprintCallable)
-	UInv_InventoryGrid* GetInventoryGrid() const { return Grid_All;}
+	virtual UInv_InventoryGrid* GetInventoryGrid() const override { return Grid_All;}
+	void InventoryBindEvent() const;
+
+	virtual void ClearHoverItem() const override;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+	TArray<TObjectPtr<UInv_EquippedGridSlot>> Equipments;
 private:
 	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
 	
-	UPROPERTY()
-	TArray<TObjectPtr<UInv_EquippedGridSlot>> Equipments;
-	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCanvasPanel> CanvasPanel;
-	
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UWidgetSwitcher> Switcher;
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UInv_InventoryGrid> Grid_All;
-
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> Button_Equippable;
-
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> Button_Consumable;
-
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> Button_Craftable;
 	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
-	TSubclassOf<UInv_ItemDescription> ItemDescriptionClass;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UInv_InventoryGrid> Grid_Other;
 	
-	UPROPERTY()
-	TObjectPtr<UInv_ItemDescription> ItemDescription;
-	
-	UInv_ItemDescription* GetItemDescription();
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UUserWidget> Survival_ActorEquipment;
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	float DescriptionTimerDelay{0.5f};
-	
-	TWeakObjectPtr<UInv_InventoryGrid> ActiveGrid;
 	
 	FTimerHandle DescriptionTimer;
 

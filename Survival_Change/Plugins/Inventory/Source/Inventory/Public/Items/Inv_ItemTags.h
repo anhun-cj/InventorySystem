@@ -22,6 +22,14 @@ namespace GameItems
 		{
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(SteelMask)
 		}
+
+		//装备槽
+		namespace Slot
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Weapon)
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Back)
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Face)
+		}
 	}
 
 	namespace Consumables
@@ -48,5 +56,17 @@ namespace GameItems
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(FireFernFruit)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(LuminDaisy)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(ScorchPetalBlossom)
+	}
+}
+
+//物品属性
+namespace Item
+{
+	namespace Stat
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(AttackPower)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Strength)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Health)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Mana)
 	}
 }

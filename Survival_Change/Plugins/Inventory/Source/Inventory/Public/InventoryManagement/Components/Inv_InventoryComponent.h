@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -7,6 +7,7 @@
 
 struct FInv_SpaceQueryResult;
 struct FInv_SlotAvailabilityResult;
+struct FInv_ItemManifest;
 class UInv_InventoryBase;
 class UInv_InventoryItem;
 class UInv_ItemComponent;
@@ -14,7 +15,6 @@ class UInv_ItemComponent;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FInventoryChange, UInv_InventoryItem*, Item);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNoRoomInInventory);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FItemEquipStatusChanged, UInv_InventoryItem*, Item);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FInventoryMenuToggled, bool, bOpen);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FInventoryRemoveSlottedItem, UInv_InventoryItem*, Item, int32, GridIndex);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), Blueprintable)
@@ -31,11 +31,14 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory")
-	void TryAddItem(UInv_ItemComponent* ItemComponent);
+	virtual void TryAddItem(UInv_ItemComponent* ItemComponent);
 	void ChangeItemIndex(UInv_InventoryItem* Item, int32 Index);
 
 	UFUNCTION(Server, Reliable)
 	void Server_AddItem(UInv_ItemComponent* ItemComponent, const int32 StackCount, const int32 GridIndex, UInv_InventoryItem* Item, const bool IsInGridSlots);
+	
+	UFUNCTION(Server, Reliable)
+	void Server_AddInventoryItem(const int32 GridIndex, UInv_InventoryItem* Item, int32 StackCount, bool IsInGridSlots);
 	
 	UFUNCTION(Server, Reliable)
 	void Server_MoveItem(UInv_InventoryItem* SourceItem, const FInv_SpaceQueryResult& Result, int32 DropIndex);
@@ -50,13 +53,9 @@ public:
 	void Server_DestroyActor(UInv_ItemComponent* ItemComponent, int32 Remainder);
 	
 	UFUNCTION(Server, Reliable)
-	void Server_AddNewItem(UInv_ItemComponent* ItemComponent, int32 StackCount);
-	
-	UFUNCTION(Server, Reliable)
-	void Server_AddStacksToItem(UInv_ItemComponent* ItemComponent, int32 StackCount, int32 Remainder);
-	
-	UFUNCTION(Server, Reliable)
 	void Server_DropItem(UInv_InventoryItem* Item);
+	
+	void Server_RemoveItem(UInv_InventoryItem* Item);
 	
 	UFUNCTION(Server, Reliable)
 	void Server_ConsumeItem(UInv_InventoryItem* Item, int32 GridIndex);
@@ -70,15 +69,21 @@ public:
 	void ToggleInventoryMenu();
 
 	void AddRepSubObj(UObject* SubObj);
-	
-	void SpawnDroppedItem(UInv_InventoryItem* Item) const;
+	void RemoveRepSubObj(UObject* SubObj);
+
+	FInv_InventoryFastArray& GetInventoryListMutable() { return InventoryList; }
+
+	UInv_ItemComponent* SpawnDroppedItem(UInv_InventoryItem* Item) const;
 	
 	UFUNCTION(BlueprintCallable)
 	UInv_InventoryBase* GetInventoryMenu() const { return InventoryMenu; }
 	
 	bool IsInventoryMenuOpen() const { return bInventoryMenuOpen; }
 	
-	UInv_InventoryItem* FindNoFillItemByType(const FGameplayTag& Tag, const TSet<UInv_InventoryItem*> Items) const;
+	UInv_InventoryItem* FindNoFillItem(const FInv_ItemManifest& Source, const TSet<UInv_InventoryItem*> Items) const;
+	
+	FInv_InventoryFastArray GetInventoryList() const { return InventoryList;}
+	
 	
 	FInventoryChange OnItemAdded;
 	FInventoryChange OnItemRemoved;
@@ -87,24 +92,23 @@ public:
 	FNoRoomInInventory NoRoomInInventory;
 	FItemEquipStatusChanged OnItemEquipped;
 	FItemEquipStatusChanged OnItemUnequipped;
-	FInventoryMenuToggled OnInventoryMenuToggled;
 protected:
 	virtual void BeginPlay() override;
-
-private:
-	void ConstructInventory();
-
-	TWeakObjectPtr<APlayerController> OwningController;
-
+	
 	UPROPERTY(Replicated)
 	FInv_InventoryFastArray InventoryList;
+private:
+	void ConstructInventory();
+	
+	TWeakObjectPtr<APlayerController> OwningController;
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	TSubclassOf<UInv_InventoryBase> InventoryMenuClass;
 
-	UPROPERTY();
+	UPROPERTY()
 	TObjectPtr<UInv_InventoryBase> InventoryMenu;
 
+	UPROPERTY(Replicated)
 	bool bInventoryMenuOpen;
 
 	void OpenInventoryMenu();

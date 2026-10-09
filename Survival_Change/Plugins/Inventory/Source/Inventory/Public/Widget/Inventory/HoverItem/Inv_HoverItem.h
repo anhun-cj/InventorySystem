@@ -1,5 +1,3 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -34,12 +32,16 @@ public:
 	UFUNCTION(BlueprintCallable)
 	UInv_InventoryItem* GetInventoryItem() const;
 	void SetInventoryItem(UInv_InventoryItem* Item);
+	void SetCol(int32 Col) { SourceCol = Col; }
+	int32 GetCol() const { return SourceCol; }
 private:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> Image_Icon;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> Text_StackCount;
+	
+	int32 SourceCol;
 	
 	int32 PreviousGridIndex;
 	FIntPoint GridDimensions;

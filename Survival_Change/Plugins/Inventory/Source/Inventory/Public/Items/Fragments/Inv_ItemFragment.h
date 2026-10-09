@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
@@ -69,6 +69,8 @@ struct FInv_ImageFragment : public FInv_InventoryItemFragment
 	
 	UTexture2D* GetIcon() const { return Icon; }
 	FVector2D GetIconDimension() const { return IconDimension; }
+	void SetIcon(UTexture2D* InIcon) { Icon = InIcon; }
+	void SetIconDimension(const FVector2D& InDimension) { IconDimension = InDimension; }
 	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
 	
 private:
@@ -76,7 +78,7 @@ private:
 	TObjectPtr<UTexture2D> Icon{ nullptr };
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
-	FVector2D IconDimension{ 44.0f, 44.0f };
+	FVector2D IconDimension{ 100.0f, 100.0f };
 };
 
 USTRUCT(BlueprintType)
@@ -100,7 +102,9 @@ struct FInv_LabeledNumberFragment : public FInv_InventoryItemFragment
 	virtual void Manifest() override;
 	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
 	float GetValue() const { return Value; }
-	
+	void SetLabel(const FText& InLabel) { Text_Label = InLabel; }
+	void SetValue(float InValue) { Value = InValue; }
+
 	bool bRandomizeOnManifest{ true };
 private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
@@ -136,6 +140,7 @@ struct FInv_StackableFragment : public FInv_ItemFragment
 	int32 GetMaxStackCount() const { return MaxStackCount; }
 	int32 GetStackCount() const { return StackCount; }
 	void SetStackCount(int32 Count) { StackCount = Count; }
+	void SetMaxStackCount(int32 Count) { MaxStackCount = Count; }
 	
 private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
@@ -159,7 +164,9 @@ struct FInv_ConsumeFragment : public FInv_InventoryItemFragment
 	
 	virtual void OnConsume(APlayerController* PC);
 	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
-	virtual void Manifest() override; 
+	virtual void Manifest() override;
+
+	TArray<TInstancedStruct<FInv_ConsumeModifier>>& GetConsumeModifiersMutable() { return ConsumeModifiers; }
 private:
 	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (ExcludeBaseStruct))
 	TArray<TInstancedStruct<FInv_ConsumeModifier>> ConsumeModifiers;
@@ -217,6 +224,10 @@ struct FInv_EquipmentFragment : public FInv_InventoryItemFragment
 	void DestroyAttachActor() const;
 	
 	FGameplayTag GetEquipTag() const{ return EquipTag; }
+	void SetEquipTag(FGameplayTag Tag) { EquipTag = Tag; }
+	void SetEquipActorClass(TSubclassOf<AInv_EquipActor> InClass) { EquipActorClass = InClass; }
+	void SetSocketAttachPoint(FName InSocket) { SocketAttachPoint = InSocket; }
+	TArray<TInstancedStruct<FInv_EquipModifier>>& GetEquipModifiersMutable() { return EquipModifiers; }
 private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	TArray<TInstancedStruct<FInv_EquipModifier>> EquipModifiers;

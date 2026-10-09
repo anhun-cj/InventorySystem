@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Net/Serialization/FastArraySerializer.h"
@@ -21,6 +21,8 @@ struct FInv_InventoryEntry: public FFastArraySerializerItem
 	GENERATED_BODY()
 
 	FInv_InventoryEntry() {}
+	
+	UInv_InventoryItem* GetItem() const { return Item; }
 
 private:
 	friend struct FInv_InventoryFastArray;
@@ -55,14 +57,15 @@ struct FInv_InventoryFastArray : public FFastArraySerializer
 	}
 
 	UInv_InventoryItem* AddEntry(UInv_ItemComponent* ItemComponent, int32 Count, int32 GridIndex);
-	UInv_InventoryItem* AddEntry(UInv_InventoryItem* Item);
+	UInv_InventoryItem* AddEntry(UInv_InventoryItem* Item, int32 GridIndex);
 	void ChangeEntryIndex(const UInv_InventoryItem* Item, int32 Index);
 	void ChangeEntry(const UInv_InventoryItem* Item, int32 Count);
 	void ChangeEntryByIndex(const UInv_InventoryItem* Item, int32 Count);
 	void RemoveEntry(UInv_InventoryItem* Item);
+	void ClearAllItems();
 
-	UInv_InventoryItem* FindNoFillItemByType(const FGameplayTag& ItemType, TSet<UInv_InventoryItem*> Items) const;
-	UInv_InventoryItem* FindFirstNoFillItemByType(const FGameplayTag& ItemType) const;
+	UInv_InventoryItem* FindNoFillItemLike(const FInv_ItemManifest& Source, TSet<UInv_InventoryItem*> Items) const;
+	UInv_InventoryItem* FindFirstNoFillItemLike(const FInv_ItemManifest& Source) const;
 	UInv_InventoryItem* FindItemByIndex(int32 Index) const;
 	bool CheckItemFilled(UInv_InventoryItem* Item) const;
 	

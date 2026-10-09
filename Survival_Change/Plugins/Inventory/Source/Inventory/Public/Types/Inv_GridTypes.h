@@ -37,6 +37,7 @@ struct FInv_SlotAvailabilityResult
 	TWeakObjectPtr<UInv_InventoryItem> Item;
 	
 	int32 TotalRoomToFill = 0;
+	
 	int32 Remainder = 0;
 	
 	bool bStackable = false;
@@ -78,8 +79,10 @@ USTRUCT(BlueprintType)
 struct FInv_SpaceQueryResult
 {
 	GENERATED_BODY()
-	//没有物品为真
+	//没有物品为真（RPC 参数，所有需网络传输的字段必须标记 UPROPERTY，否则到服务器为默认值）
+	UPROPERTY()
 	bool bHasSpace{false};
+	UPROPERTY()
 	bool bAllowItemDown{false};
 	//移动网格范围内的物品，允许交换后需要根据计算后的坐标交换位置
 	UPROPERTY()
@@ -87,10 +90,13 @@ struct FInv_SpaceQueryResult
 	UPROPERTY()
 	TArray<int32> ItemMoveIndices;
 	//可以交换网格颜色(true为绿色，false为红色)
+	UPROPERTY()
 	TArray<bool> Green;
-	
+
+	UPROPERTY()
 	TWeakObjectPtr<UInv_InventoryItem> ValidItem = nullptr;
-	
+
+	UPROPERTY()
 	int32 UpperLeftIndex{INDEX_NONE};
 };
 

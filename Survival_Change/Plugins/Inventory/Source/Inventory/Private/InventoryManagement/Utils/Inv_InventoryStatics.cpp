@@ -1,4 +1,6 @@
 ﻿#include "InventoryManagement/Utils/Inv_InventoryStatics.h"
+
+#include "InventoryManagement/Components/Inv_FindItemComponent.h"
 #include "InventoryManagement/Components/Inv_InventoryComponent.h"
 #include "Items/Components/Inv_ItemComponent.h"
 #include "Types/Inv_GridTypes.h"
@@ -8,8 +10,16 @@ UInv_InventoryComponent* UInv_InventoryStatics::GetInventoryComponent(const APla
 {
 	if (!IsValid(PlayerController))
 		return nullptr;
-	UInv_InventoryComponent* InventoryComponent = PlayerController->FindComponentByClass<UInv_InventoryComponent>();
-	return InventoryComponent;
+	
+	TArray<UInv_InventoryComponent*> Components;
+	PlayerController->GetComponents<UInv_InventoryComponent>(Components);
+	for (UInv_InventoryComponent* Comp : Components)
+	{
+		if (Cast<UInv_FindItemComponent>(Comp))
+			continue;
+		return Comp;
+	}
+	return nullptr;
 }
 
 EInv_ItemCategory UInv_InventoryStatics::GetItemCategoryForItemComponent(UInv_ItemComponent* ItemComponent)
@@ -19,12 +29,11 @@ EInv_ItemCategory UInv_InventoryStatics::GetItemCategoryForItemComponent(UInv_It
 	return ItemComponent->GetItemManifest().GetItemCategory();
 }
 
-void UInv_InventoryStatics::ItemHovered(APlayerController* PlayerController, UInv_InventoryItem* Item)
+void UInv_InventoryStatics::ItemHovered(UInv_InventoryComponent* InventoryComponent, UInv_InventoryItem* Item)
 {
-	UInv_InventoryComponent* IC = GetInventoryComponent(PlayerController);
-	if (!IsValid(IC))
+	if (!IsValid(InventoryComponent))
 		return;
-	UInv_InventoryBase* InventoryBase = IC->GetInventoryMenu();
+	UInv_InventoryBase* InventoryBase = InventoryComponent->GetInventoryMenu();
 	if (!IsValid(InventoryBase))
 		return;
 	InventoryBase->OnItemHovered(Item);

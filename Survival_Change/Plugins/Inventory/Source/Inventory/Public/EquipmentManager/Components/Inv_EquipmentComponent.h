@@ -42,7 +42,7 @@ private:
 	
 	void InitInventoryComponent();
 	
-	AInv_EquipActor* SpawnEquipActor(FInv_EquipmentFragment* EquipmentFragment, const FInv_ItemManifest& Manifest, USkeletalMeshComponent* SkeletalMeshComponent);
+	AInv_EquipActor* SpawnEquipActor(FInv_EquipmentFragment* EquipmentFragment, const FInv_ItemManifest& Manifest, USkeletalMeshComponent* SkeletalMeshComponent) const;
 	
 	UPROPERTY()
 	TArray<TObjectPtr<AInv_EquipActor>> EquipActors;

@@ -1,10 +1,12 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
+#include "IContentBrowserSingleton.h"
 #include "Blueprint/UserWidget.h"
 #include "Types/Inv_GridTypes.h"
 #include "Inv_InventoryGrid.generated.h"
 
+class UWrapBox;
 class UInv_ItemPopUp;
 enum class EInv_GridSlotState : uint8;
 class UInv_HoverItem;
@@ -15,6 +17,7 @@ class UInv_SlottedItem;
 class UInv_ItemComponent;
 struct FInv_ItemManifest;
 class UInv_InventoryComponent;
+class UInv_InventoryBase;
 class UCanvasPanel;
 class UInv_GridSlot;
 
@@ -29,7 +32,7 @@ public:
 
 	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
 	
-	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_ItemComponent* ItemComponent);
+	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_ItemComponent* ItemComponent, const bool bAllStackable = true);
 	
 	void ShowCursor();
 	void HideCursor();
@@ -47,21 +50,33 @@ public:
 	UFUNCTION(BlueprintCallable)
 	int32 GetItemDropIndex() const{return ItemDropIndex;}
 	void UnHighlightSlots();
+	void BindInventoryEvent(UInv_InventoryComponent* Inventory);
+	void UnBindInventoryEvent();
+	UInv_InventoryComponent* GetInventoryComponent() const { return InventoryComponent.Get(); }
+	
+	void SetHoverSourceMenu(UInv_InventoryBase* InMenu);
+	UInv_InventoryBase* GetHoverSourceMenu() const {return HoverSourceMenu.Get();};
 	
 	UFUNCTION()
 	void RemoveItem(UInv_InventoryItem* Item);
 	
 	UFUNCTION()
 	void AddItem(UInv_InventoryItem* Item);
+
+	void InitInventory();
+	void ClearInventory();
+	void ConstructGridSlots();
+	int32 GetCol() const { return Col; }
 private:
 
 	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
+	TWeakObjectPtr<UInv_InventoryBase> HoverSourceMenu;
 	TWeakObjectPtr<UCanvasPanel> OwningCanvasPanel;
 	
 	void ConstructGrid();
-
-	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_InventoryItem* Item, const int32 StackAmountOverride = -1);
-	FInv_SlotAvailabilityResult HasRoomForItem(const FInv_ItemManifest& Manifest, const int32 StackAmountOverride = -1);
+	
+	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_InventoryItem* Item, const int32 StackAmountOverride = -1, const bool bAllStackable = true);
+	FInv_SlotAvailabilityResult HasRoomForItem(const FInv_ItemManifest& Manifest, const int32 StackAmountOverride = -1, const bool bAllStackable = true);
 	void AddItemToIndices(UInv_InventoryItem* Item);
 	bool MatchesCategory(UInv_InventoryItem* Item) const;
 	
@@ -91,7 +106,7 @@ private:
 		const FGameplayTag& ItemType, const int32 MaxStackCount) const;
 	bool HasValidItem(const UInv_GridSlot* GridSlot) const;
 	bool IsUpperLeftSlot(const UInv_GridSlot* GridSlot, const UInv_GridSlot* SubGridSlot) const;
-	bool DoesItemTypeMatch(const UInv_InventoryItem* SubItem, const FGameplayTag& ItemType) const;
+	bool DoesItemMatch(const UInv_InventoryItem* SubItem, const FInv_ItemManifest& Source) const;
 	bool IsInGridBounds(const int32 StartIndex, const FIntPoint& ItemDimensions) const;
 	int32 DetermineFillAmountFotSlot(const bool bStackable, const int32 MaxStackCount, const int32 AmountToFill, const UInv_GridSlot* GridSlot) const;
 	int32 GetStackAmount(const UInv_GridSlot* GridSlot) const;
@@ -171,9 +186,6 @@ private:
 	UFUNCTION()
 	void OnPopUpMenuConsume(int32 Index);
 	
-	UFUNCTION()
-	void OnInventoryMenuToggled(bool bOpen);
-	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Inventory")
 	EInv_ItemCategory ItemCategory;
 
@@ -185,6 +197,9 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCanvasPanel> CanvasPanel;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWrapBox> WrapBox_GridSlots;
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	TSubclassOf<UInv_SlottedItem> SlottedItemClass;
@@ -221,4 +236,6 @@ private:
 	
 	int32 LastHighlightedIndex{INDEX_NONE};
 	FIntPoint LastHighlightedDimensions;
+	
+	FTimerHandle TimerHandle;
 };

@@ -8,6 +8,7 @@
 #include "Inv_InventoryBase.generated.h"
 
 
+class UInv_InventoryGrid;
 class UInv_InventoryComponent;
 class UInv_HoverItem;
 class UInv_ItemComponent;
@@ -25,4 +26,7 @@ public:
 	virtual UInv_HoverItem* GetHoverItem() const { return nullptr; }
 	virtual float GetTileSize() const { return 0.0f; }
 	virtual void SetInventoryComponent(UInv_InventoryComponent* Inventory) {}
+	virtual UInv_InventoryGrid* GetOtherGrid() const { return nullptr; }
+	virtual UInv_InventoryGrid* GetInventoryGrid() const { return nullptr; }
+	virtual void ClearHoverItem() const {};
 };

@@ -1,4 +1,4 @@
-﻿#include "Items/Fragments/Inv_FragmentTags.h"
+#include "Items/Fragments/Inv_FragmentTags.h"
 
 namespace FragmentTags
 {
@@ -9,6 +9,7 @@ namespace FragmentTags
 	UE_DEFINE_GAMEPLAY_TAG(ItemNameFragment, "FragmentTags.ItemNameFragment")
 	UE_DEFINE_GAMEPLAY_TAG(PrimaryStatFragment, "FragmentTags.PrimaryStatFragment")
 	UE_DEFINE_GAMEPLAY_TAG(ItemTypeFragment, "FragmentTags.ItemTypeFragment")
+	UE_DEFINE_GAMEPLAY_TAG(FlavorTextFragment, "FragmentTags.FlavorTextFragment")
 	UE_DEFINE_GAMEPLAY_TAG(SellValueFragment, "FragmentTags.SellValueFragment")
 	UE_DEFINE_GAMEPLAY_TAG(RequiredLevelFragment, "FragmentTags.RequiredLevelFragment")
 	UE_DEFINE_GAMEPLAY_TAG(EquipmentFragment, "FragmentTags.EquipFragment")

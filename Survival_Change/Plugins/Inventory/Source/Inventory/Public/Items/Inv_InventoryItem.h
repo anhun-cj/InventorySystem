@@ -5,6 +5,8 @@
 #include "Manifest/Inv_ItemManifest.h"
 #include "Inv_InventoryItem.generated.h"
 
+class UInv_InventoryComponent;
+
 UCLASS()
 class INVENTORY_API UInv_InventoryItem : public UObject
 {
@@ -25,18 +27,30 @@ public:
 	void SetGridIndex(int32 Index) {OldGridIndex = GridIndex;GridIndex = Index;}
 	void SetItemIndex(int32 Index) {ItemIndex = Index;}
 	int32 GetItemIndex() const {return ItemIndex;}
-	
+	UInv_InventoryComponent* GetInventoryComponent() const;
+	void SetInventoryComponent(UInv_InventoryComponent* InventoryComponent);
+	UInv_InventoryComponent* GetOldInventoryComponent() const;
 private:
 	/*UPROPERTY(VisibleAnywhere, Replicated, meta = (BaseStruct = "/Script/Inventory.FInv_ItemManifest"))
 	FInstancedStruct<FInv_ItemManifest> ItemManifest;*/
-	
+
 	//背包物品中的位置
-	int32 ItemIndex;
+	UPROPERTY(Replicated)
+	int32 ItemIndex = 0;
 	//有效网格
-	int32 GridIndex;
+	UPROPERTY(Replicated)
+	int32 GridIndex = 0;
 	//旧的有效网格
-	int32 OldGridIndex;
+	UPROPERTY(Replicated)
+	int32 OldGridIndex = 0;
 	
+	UPROPERTY(Replicated)
+	TWeakObjectPtr<UInv_InventoryComponent> OldOwningInventoryComponent;
+
+	//引用所属背包组件
+	UPROPERTY(Replicated)
+	TWeakObjectPtr<UInv_InventoryComponent> OwnerInventory;
+
 	UPROPERTY(VisibleAnywhere, Replicated)
 	TInstancedStruct<FInv_ItemManifest> ItemManifest;
 };

@@ -72,7 +72,7 @@ void UInv_EquipmentComponent::InitInventoryComponent()
 }
 
 AInv_EquipActor* UInv_EquipmentComponent::SpawnEquipActor(FInv_EquipmentFragment* EquipmentFragment,
-	const FInv_ItemManifest& Manifest, USkeletalMeshComponent* SkeletalMesh)
+	const FInv_ItemManifest& Manifest, USkeletalMeshComponent* SkeletalMesh) const
 {
 	AInv_EquipActor* EquipActor = EquipmentFragment->SpawnAttachActor(SkeletalMesh);	
 	EquipActor->SetEquipTag(EquipmentFragment->GetEquipTag());
