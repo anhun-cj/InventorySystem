@@ -1,4 +1,5 @@
 #include "Items/Manifest/Inv_ItemManifest.h"
+#include "Engine/World.h"
 #include "Items/Inv_InventoryItem.h"
 #include "Items/Components/Inv_ItemComponent.h"
 #include "Items/Definitions/Inv_ItemDefinition.h"
@@ -15,6 +16,13 @@ UInv_InventoryItem* FInv_ItemManifest::Manifest(UObject* NewOuter)
 		Fragment.GetMutable().Manifest();
 	}
 	ClearFragments();
+	return Item;
+}
+
+UInv_InventoryItem* FInv_ItemManifest::NewManifest(UObject* NewOuter) const
+{
+	UInv_InventoryItem * Item = NewObject<UInv_InventoryItem>(NewOuter, UInv_InventoryItem::StaticClass());
+	Item->SetItemManifest(*this);
 	return Item;
 }
 
@@ -35,12 +43,20 @@ UInv_ItemComponent* FInv_ItemManifest::SpawnPickUpActor(const UObject* WorldCont
 {
 	if (!IsValid(WorldContextObject) || !IsValid(PickupActorClass))
 		return nullptr;
-	AActor* SpawnActor = WorldContextObject->GetWorld()->SpawnActor<AActor>(PickupActorClass, SpawnLocation, SpawnRotation);
+	UWorld* World = WorldContextObject->GetWorld();
+	if (!IsValid(World))
+		return nullptr;
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AActor* SpawnActor = World->SpawnActor<AActor>(PickupActorClass, SpawnLocation, SpawnRotation, SpawnParams);
 	if (!IsValid(SpawnActor))
 		return nullptr;
 	UInv_ItemComponent* ItemComponent = SpawnActor->FindComponentByClass<UInv_ItemComponent>();
 	if (!IsValid(ItemComponent))
+	{
+		SpawnActor->Destroy();
 		return nullptr;
+	}
 	//优先回传物品资产：新拾取组件以资产为唯一数据源（堆叠 ItemId、标签、属性全部来自资产）
 	if (!SourceDefinition.IsNull())
 	{

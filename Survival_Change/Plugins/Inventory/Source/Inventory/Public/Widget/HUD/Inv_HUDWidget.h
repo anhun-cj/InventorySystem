@@ -4,6 +4,8 @@
 #include "Blueprint/UserWidget.h"
 #include "Inv_HUDWidget.generated.h"
 
+class UVerticalBox;
+class UInv_OptionMessage;
 class UInv_InfoMessage;
 
 UCLASS()
@@ -15,9 +17,18 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
 	void ShowPickUpMessage(const FString& Message);
-
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
+	void ShowMessages(const TArray<FText>& Messages);
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
+	void HideMessages();
+	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
 	void HidePickUpMessage();
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
+	void ClearMessages();
 private:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UInv_InfoMessage> InfoMessage;

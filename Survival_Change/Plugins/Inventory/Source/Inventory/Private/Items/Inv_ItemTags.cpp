@@ -6,25 +6,37 @@ namespace GameItems
 	{
 		namespace Weapons
 		{
-			UE_DEFINE_GAMEPLAY_TAG(Axe, "GameItems.Equipment.Weapons.Axe")
-			UE_DEFINE_GAMEPLAY_TAG(Sword, "GameItems.Equipment.Weapons.Sword")
+			UE_DEFINE_GAMEPLAY_TAG(Weapon, "GameItems.Equipment.Weapons.Weapon")
 		}
 		
-		namespace Cloaks
+		namespace BackPacks
 		{
-			UE_DEFINE_GAMEPLAY_TAG(RedCloak, "GameItems.Equipment.Cloaks.RedCloak")
+			UE_DEFINE_GAMEPLAY_TAG(BackPack, "GameItems.Equipment.BackPacks.BackPack")
 		}
 		
-		namespace Masks
+		namespace ChestRigs
 		{
-			UE_DEFINE_GAMEPLAY_TAG(SteelMask, "GameItems.Equipment.Masks.SteelMask")
+			UE_DEFINE_GAMEPLAY_TAG(ChestRig, "GameItems.Equipment.ChestRigs.ChestRig")
 		}
-
-		namespace Slot
+		
+		namespace Helmets
 		{
-			UE_DEFINE_GAMEPLAY_TAG(Weapon, "GameItems.Equipment.Slot.Weapon")
-			UE_DEFINE_GAMEPLAY_TAG(Back, "GameItems.Equipment.Slot.Back")
-			UE_DEFINE_GAMEPLAY_TAG(Face, "GameItems.Equipment.Slot.Face")
+			UE_DEFINE_GAMEPLAY_TAG(Helmet, "GameItems.Equipment.Helmets.Helmet")
+		}
+		
+		namespace ChestArmors
+		{
+			UE_DEFINE_GAMEPLAY_TAG(ChestArmor, "GameItems.Equipment.ChestArmors.ChestArmor")
+		}
+		
+		namespace Pistols
+		{
+			UE_DEFINE_GAMEPLAY_TAG(Pistol, "GameItems.Equipment.Pistols.Pistol")
+		}
+		
+		namespace Knifes
+		{
+			UE_DEFINE_GAMEPLAY_TAG(Knife, "GameItems.Equipment.Knifes.Knife")
 		}
 	}
 	namespace Consumables
@@ -57,7 +69,6 @@ namespace Item
 {
 	namespace Stat
 	{
-		UE_DEFINE_GAMEPLAY_TAG(AttackPower, "Item.Stat.AttackPower")
 		UE_DEFINE_GAMEPLAY_TAG(Strength, "Item.Stat.Strength")
 		UE_DEFINE_GAMEPLAY_TAG(Health, "Item.Stat.Health")
 		UE_DEFINE_GAMEPLAY_TAG(Mana, "Item.Stat.Mana")

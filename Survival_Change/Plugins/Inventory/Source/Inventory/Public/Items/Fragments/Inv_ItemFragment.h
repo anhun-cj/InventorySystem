@@ -99,25 +99,17 @@ struct FInv_LabeledNumberFragment : public FInv_InventoryItemFragment
 {
 	GENERATED_BODY()
 	
-	virtual void Manifest() override;
 	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
 	float GetValue() const { return Value; }
 	void SetLabel(const FText& InLabel) { Text_Label = InLabel; }
 	void SetValue(float InValue) { Value = InValue; }
 
-	bool bRandomizeOnManifest{ true };
 private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	FText Text_Label;
 	
-	UPROPERTY(VisibleAnywhere, Category = "Inventory")
-	float Value = {0};
-	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
-	float MinValue{ 0.0f };
-	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
-	float MaxValue{ 0.0f };
+	float Value = 0.0f;
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	bool bCollapseLabel{ false };

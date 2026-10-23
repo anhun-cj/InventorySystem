@@ -4,6 +4,8 @@
 #include "Components/TextBlock.h"
 #include "Items/Inv_InventoryItem.h"
 #include "Items/Fragments/Inv_ItemFragment.h"
+#include "Widget/Inventory/Spatial/Inv_InventoryGrid.h"
+#include "InventoryManagement/Components/Inv_InventoryComponent.h"
 
 void UInv_HoverItem::SetImageBrush(const FSlateBrush& Brush) const
 {
@@ -45,6 +47,20 @@ void UInv_HoverItem::SetIsStackable(bool bStackable)
 UInv_InventoryItem* UInv_HoverItem::GetInventoryItem() const
 {
 	return InventoryItem.Get();
+}
+
+void UInv_HoverItem::SetInventoryGrid(UInv_InventoryGrid* InventoryGrid)
+{
+	Grid = InventoryGrid;
+	for (const FInv_InventoryEntry& Entry : InventoryGrid->GetInventoryComponent()->GetInventoryList().GetAllItems())
+	{
+		if (Entry.GetItem() == InventoryItem.Get())
+		{
+			PreviousGridIndex = Entry.GridIndex;
+			UpDateStackCount(bIsStackable ? Entry.StackCount : 0);
+			break;
+		}
+	}
 }
 
 void UInv_HoverItem::SetInventoryItem(UInv_InventoryItem* Item)

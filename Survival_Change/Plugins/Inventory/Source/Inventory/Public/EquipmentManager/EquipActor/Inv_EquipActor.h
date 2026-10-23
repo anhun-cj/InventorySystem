@@ -21,4 +21,7 @@ public:
 private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	FGameplayTag EquipTag;
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TObjectPtr<UStaticMeshComponent> StaticMesh;
 };

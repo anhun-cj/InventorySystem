@@ -1,4 +1,7 @@
 #include "Widget/Inventory/GridSlot/Inv_GridSlot.h"
+#include "Widget/Inventory/GridSlot/Inv_EquippedGridSlot.h"
+#include "Widget/Inventory/SlottedItems/Inv_EquippedSlotItem.h"
+#include "Widget/Inventory/Spatial/Inv_SpatialInventory.h"
 
 #include "Blueprint/DragDropOperation.h"
 #include "Items/Inv_InventoryItem.h"
@@ -27,9 +30,9 @@ void UInv_GridSlot::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 
 FReply UInv_GridSlot::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
+	bIsMouseDown = InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton;
+	if (!bIsMouseDown)
 		return FReply::Handled();
-	bIsMouseDown = true;
 	return FReply::Handled().DetectDrag(TakeWidget(), EKeys::LeftMouseButton);
 }
 
@@ -47,14 +50,21 @@ FReply UInv_GridSlot::NativeOnMouseButtonUp(const FGeometry& InGeometry, const F
 void UInv_GridSlot::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent,
                                          UDragDropOperation*& OutOperation)
 {
-	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 	bIsMouseDown = false;
-	
-	if (InventoryItem.IsValid())
+	if (!InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton))
 		return;
+	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 	
 	UInv_HoverItem* HoverItem = CreateWidget<UInv_HoverItem>(GetOwningPlayer(), HoverItemClass);
+	if (!HoverItem)
+		return;
 	HoverItem->SetInventoryItem(InventoryItem.Get());
+	HoverItem->SetCol(InventoryGrid->GetCol());
+	HoverItem->SetInventoryGrid(InventoryGrid.Get());
+	HoverItem->SetPreviousGridIndex(UpperLeftIndex);
+	if (HoverItem->IsStackable())
+		HoverItem->UpDateStackCount(InventoryGrid->GetStackAmount(this));
+	InventoryGrid->SetHoverItem(HoverItem);
 	
 	UDragDropOperation* DragOp = NewObject<UDragDropOperation>();
 	DragOp->Payload = HoverItem;
@@ -65,26 +75,50 @@ void UInv_GridSlot::NativeOnDragDetected(const FGeometry& InGeometry, const FPoi
 bool UInv_GridSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
 	UDragDropOperation* InOperation)
 {
-	Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
-	APlayerController* PlayerController = GetOwningPlayer();
 	UInv_HoverItem* HoverItem = Cast<UInv_HoverItem>(InOperation->Payload);
-	AInv_PlayerController* Controller = Cast<AInv_PlayerController>(PlayerController);
-	if (!Controller || !HoverItem || !InventoryGrid.IsValid())
+	if (!HoverItem || !InventoryGrid.IsValid())
 		return false;
-
-	UInv_InventoryItem* ItemToTransfer = HoverItem->GetInventoryItem();
-	if (!ItemToTransfer)
+	if (!HoverItem->GetInventoryItem())
 		return false;
-	UInv_FindItemComponent* FindItemComponent = Cast<UInv_FindItemComponent>(ItemToTransfer->GetInventoryComponent());
-	if (FindItemComponent == InventoryGrid->GetInventoryComponent())
+	
+	InventoryGrid->SetHoverItem(HoverItem);
+	if (HoverItem->GetPreviousGridIndex() == INDEX_NONE)
 	{
-		FindItemComponent->Server_MoveItem(ItemToTransfer, InventoryGrid->GetResult(), InventoryGrid->GetItemDropIndex());
+		UInv_SpatialInventory* Menu = Cast<UInv_SpatialInventory>(InventoryGrid->GetHoverSourceMenu());
+		UInv_EquippedGridSlot* EquipmentSlot = Menu->FindSlotWithEquippedItem(HoverItem->GetInventoryItem());
+		if (!EquipmentSlot)
+		{
+			Menu->ClearHoverItem();
+			return true;
+		}
+		UInv_InventoryGrid* TargetGrid = InventoryGrid.Get();
+		for (UInv_InventoryItem* Parent = TargetGrid->ContainerItem; Parent; Parent = Parent->ParentContainerItem.Get())
+			if (Parent == HoverItem->GetInventoryItem())
+			{
+				Menu->ClearHoverItem();
+				return true;
+			}
+		const FInv_SpaceQueryResult Result = TargetGrid->GetResult();
+		if ((!Result.bHasSpace && !Result.bAllowItemDown) || Result.ValidItems.Num() > 1)
+		{
+			Menu->ClearHoverItem();
+			return true;
+		}
+		UInv_EquippedSlotItem* EquippedItem = EquipmentSlot->GetEquippedSlotItem();
+		UInv_InventoryItem* ItemToTransfer = HoverItem->GetInventoryItem();
+		UInv_InventoryItem* TargetItem = Result.ValidItems.IsEmpty() ? nullptr : Result.ValidItems[0].Get();
+		Menu->UnEquipItem(ItemToTransfer);
+		if (TargetItem)
+		{
+			TargetGrid->RemoveItem(TargetItem);
+			EquipmentSlot->OnItemEquipped(TargetItem, HoverItem->GetGrid()->GetTileSize());
+		}
+		TargetGrid->AddItemToIndices(ItemToTransfer, TargetGrid->GetItemDropIndex());
+		Menu->RemoveSlotItem(EquippedItem, TargetGrid);
+		Menu->ClearHoverItem();
+		return true;
 	}
-	else if (UInv_RequestComponent* RequestComp = Controller->FindComponentByClass<UInv_RequestComponent>())
-	{
-		RequestComp->TransferItem(ItemToTransfer, InventoryGrid->GetResult(), InventoryGrid->GetItemDropIndex(), InventoryGrid->GetInventoryComponent());
-	}
-	InventoryGrid->GetHoverSourceMenu()->ClearHoverItem();
+	InventoryGrid->AddItem();
 	return true;
 }
 

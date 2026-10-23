@@ -1,0 +1,5 @@
+﻿"ItemId","bEnabled","ItemName","Description","GridSize","GridPadding","ItemTagIds","BaseStats","EquipmentSlotTagId","CraftingIngredientIds"
+"10001","TRUE","斗篷","","(X=2,Y=3)","0","30005","30007&0","30005",""
+"10002","TRUE","斗篷1","","(X=2,Y=3)","0","30005","30007&0","30005",""
+"10003","TRUE","标致背包","","(X=2,Y=2)","0","30003","","30003",""
+"10004","TRUE","普通弹挂","","(X=2,Y=2)","0","30004","","30004",""

@@ -13,6 +13,10 @@ namespace FragmentTags
 	UE_DEFINE_GAMEPLAY_TAG(SellValueFragment, "FragmentTags.SellValueFragment")
 	UE_DEFINE_GAMEPLAY_TAG(RequiredLevelFragment, "FragmentTags.RequiredLevelFragment")
 	UE_DEFINE_GAMEPLAY_TAG(EquipmentFragment, "FragmentTags.EquipFragment")
+	UE_DEFINE_GAMEPLAY_TAG(EquipmentEffectsFragment, "FragmentTags.EquipmentEffects")
+	UE_DEFINE_GAMEPLAY_TAG(ConsumeEffectsFragment, "FragmentTags.ConsumeEffects")
+	UE_DEFINE_GAMEPLAY_TAG(CraftingMaterialsFragment, "FragmentTags.CraftingMaterials")
+	UE_DEFINE_GAMEPLAY_TAG(AcquisitionSourcesFragment, "FragmentTags.AcquisitionSources")
 	
 	namespace StatMod
 	{

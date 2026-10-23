@@ -24,10 +24,12 @@ public:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	
-	UInv_EquippedSlotItem* OnItemEquipped(UInv_InventoryItem* Item, const FGameplayTag& Tag, float TileSize);
-	void SetEquippedSlotItem(UInv_EquippedSlotItem* Item){EquippedSlotItem = Item;}
+	UInv_EquippedSlotItem* OnItemEquipped(UInv_InventoryItem* Item, float TileSize);
+	UInv_EquippedSlotItem* GetEquippedSlotItem() const { return EquippedSlotItem; }
+	void SetEquippedSlotItem(UInv_EquippedSlotItem* Item) { EquippedSlotItem = Item; }
+	FGameplayTag GetEquippedTag() const { return EquipmentType; }
 	
-	FEquippedGridSlotClicked EquippedGridSlotClicked;
+	FEquippedGridSlotClicked OnEquipped;
 private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	FGameplayTag EquipmentType;

@@ -1,4 +1,4 @@
-﻿#include "EquipmentManager/Components/Inv_EquipmentComponent.h"
+#include "EquipmentManager/Components/Inv_EquipmentComponent.h"
 
 #include "EquipmentManager/EquipActor/Inv_EquipActor.h"
 #include "GameFramework/Character.h"
@@ -103,19 +103,23 @@ void UInv_EquipmentComponent::OnItemEquipped(UInv_InventoryItem* InventoryItem)
 {
 	if (!IsValid(InventoryItem))
 		return;
-	if (!PlayerController->HasAuthority())
-		return;
 	FInv_ItemManifest& ItemManifest = InventoryItem->GetItemManifestMutable();
 	FInv_EquipmentFragment* EquipmentFragment = ItemManifest.GetFragmentOfTypeMutable<FInv_EquipmentFragment>();
 	if (!EquipmentFragment)
 		return;
 	if (!bIsProxy)
 	{
+		if (!PlayerController->HasAuthority())
+			return;
 		EquipmentFragment->OnEquip(PlayerController.Get());
 	}
 	if (!SkeletalMeshComponent.IsValid())
 		return;
 	AInv_EquipActor* EquipActor = SpawnEquipActor(EquipmentFragment, ItemManifest, SkeletalMeshComponent.Get());
+	if (bIsProxy)
+	{
+		EquipActor->SetReplicates(false);
+	}
 	EquipActors.Add(EquipActor);
 }
 
@@ -123,17 +127,15 @@ void UInv_EquipmentComponent::OnItemUnequipped(UInv_InventoryItem* InventoryItem
 {
 	if (!IsValid(InventoryItem))
 		return;
-	if (!PlayerController->HasAuthority())
-		return;
 	FInv_ItemManifest& ItemManifest = InventoryItem->GetItemManifestMutable();
 	FInv_EquipmentFragment* EquipmentFragment = ItemManifest.GetFragmentOfTypeMutable<FInv_EquipmentFragment>();
 	if (!EquipmentFragment)
 		return;
 	if (!bIsProxy)
 	{
+		if (!PlayerController->HasAuthority())
+			return;
 		EquipmentFragment->OnUnEquip(PlayerController.Get());
 	}
 	RemoveEquipActor(EquipmentFragment->GetEquipTag());
 }
-
-

@@ -31,8 +31,12 @@ protected:
 	virtual void SetupInputComponent() override;
 
 private:
-	void PrimaryInteract();
+	friend class UInv_InventoryComponent;
 
+	void PrimaryInteract();
+	
+	void OpenInventory(bool bOpenItem);
+	
 	void CreateHUDWidget();
 
 	void TraceForItem();
@@ -54,11 +58,16 @@ private:
 	TArray<UInputMappingContext*> MobileExcludedMappingContexts;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
-	TObjectPtr<UInputMappingContext> DefaultIMC;
+	TArray<TObjectPtr<UInputMappingContext>> DefaultIMC;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
 	TObjectPtr<UInputAction> PrimaryInteractAction;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
+	TObjectPtr<UInputAction> OpenAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
+	TObjectPtr<UInputAction> OpenItemAction;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
 	TObjectPtr<UInputAction> ToggleInventoryAction;
 

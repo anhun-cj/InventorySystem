@@ -42,16 +42,6 @@ void FInv_TextFragment::Assimilate(UInv_CompositeBase* Composite) const
 	Text->SetText(FragmentText);
 }
 
-void FInv_LabeledNumberFragment::Manifest()
-{
-	FInv_InventoryItemFragment::Manifest();
-	if (bRandomizeOnManifest)
-	{
-		Value = FMath::RandRange(MinValue, MaxValue);
-	}
-	bRandomizeOnManifest = false;
-}
-
 void FInv_LabeledNumberFragment::Assimilate(UInv_CompositeBase* Composite) const
 {
 	FInv_InventoryItemFragment::Assimilate(Composite);

@@ -7,6 +7,7 @@
 #include "Components/SizeBox.h"
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
+#include "Items/Inv_InventoryItem.h"
 
 void UInv_ItemPopUp::NativeOnInitialized()
 {
@@ -30,7 +31,7 @@ int32 UInv_ItemPopUp::GetSplitAmount() const
 
 void UInv_ItemPopUp::SplitButtonClicked()
 {
-	if (OnSplit.ExecuteIfBound(GetSplitAmount(), GridIndex))
+	if (OnSplit.ExecuteIfBound(GetSplitAmount(), Item.Get()))
 	{
 		RemoveFromParent();
 	}
@@ -38,7 +39,7 @@ void UInv_ItemPopUp::SplitButtonClicked()
 
 void UInv_ItemPopUp::DropButtonClicked()
 {
-	if (OnDrop.ExecuteIfBound(GridIndex))
+	if (OnDrop.ExecuteIfBound(Item.Get()))
 	{
 		RemoveFromParent();
 	}
@@ -46,7 +47,7 @@ void UInv_ItemPopUp::DropButtonClicked()
 
 void UInv_ItemPopUp::ConsumeButtonClicked()
 {
-	if (OnConsume.ExecuteIfBound(GridIndex))
+	if (OnConsume.ExecuteIfBound(Item.Get()))
 	{
 		RemoveFromParent();
 	}
@@ -69,6 +70,11 @@ void UInv_ItemPopUp::CollapseConsumeButton() const
 	Button_Consume->SetVisibility(ESlateVisibility::Collapsed);
 }
 
+void UInv_ItemPopUp::CollapseDropButton() const
+{
+	Button_Drop->SetVisibility(ESlateVisibility::Collapsed);
+}
+
 void UInv_ItemPopUp::SetSliderParameters(const float Max, const float Value) const
 {
 	Slider_Split->SetMaxValue(Max);
@@ -80,4 +86,9 @@ void UInv_ItemPopUp::SetSliderParameters(const float Max, const float Value) con
 FVector2D UInv_ItemPopUp::GetBoxSize() const
 {
 	return FVector2D(SizeBox_Root->GetWidthOverride(), SizeBox_Root->GetHeightOverride());
+}
+
+void UInv_ItemPopUp::SetInventoryItem(UInv_InventoryItem* InventoryItem)
+{
+	Item = InventoryItem;
 }

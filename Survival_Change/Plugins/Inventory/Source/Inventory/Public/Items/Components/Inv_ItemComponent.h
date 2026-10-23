@@ -5,14 +5,15 @@
 #include "Items/Manifest/Inv_ItemManifest.h"
 #include "Inv_ItemComponent.generated.h"
 
+class UInv_InventoryGridAsset;
 class UInv_ItemDefinition;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDataChanged, UInv_ItemComponent*, ItemComponent);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), Blueprintable)
 class INVENTORY_API UInv_ItemComponent : public UActorComponent
 {
 	GENERATED_BODY()
-
 public:
 	UInv_ItemComponent();
 
@@ -33,12 +34,17 @@ public:
 
 	FString GetPickUpMessage() const { return PickUpMessage; }
 
-	FInv_ItemManifest GetItemManifest() const { return ItemManifest; }
+	TArray<FText> GetMessages() const { return Messages; }
 	
-	void SetItemIndex(int32 Index) { ItemIndex = Index; }
-	int32 GetItemIndex() const { return ItemIndex; }
+	FInv_ItemManifest GetItemManifest() const { return ItemManifest; }
+	FInv_ItemManifest& GetItemManifestMutable() { return ItemManifest; }
 
 	void PickedUp();
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TObjectPtr<UInv_InventoryGridAsset> InventoryGridAsset;
+	
+	FOnDataChanged OnDataChanged;
 protected:
 	virtual void BeginPlay() override;
 
@@ -49,14 +55,17 @@ private:
 	/** 若已指定资产，则用资产数据覆盖 ItemManifest */
 	void BakeManifestFromDefinition();
 
+	UFUNCTION()
+	void OnDateChange();
+	
 	//选择了资产后隐藏旧的手工清单配置，避免两处数据冲突
-	UPROPERTY(Replicated, EditAnywhere, Category = "Inventory",
+	UPROPERTY(ReplicatedUsing=OnDateChange, EditAnywhere, Category = "Inventory",
 		meta = (EditCondition = "ItemDefinition == nullptr", EditConditionHides))
 	FInv_ItemManifest ItemManifest;
 
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	FString PickUpMessage;
 	
-	UPROPERTY(Replicated)
-	int32 ItemIndex;
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TArray<FText> Messages;
 };

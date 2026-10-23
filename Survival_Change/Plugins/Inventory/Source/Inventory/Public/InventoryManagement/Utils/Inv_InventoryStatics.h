@@ -30,6 +30,9 @@ public:
 	template<typename T, typename FuncT>
 	static void ForEch2D(TArray<T>& Array, int32 Index, const FIntPoint& Range2D, int32 GridCol, const FuncT& Function);
 
+	template<typename T, typename FuncT>
+	static void ForEach2D(TArray<T>& Array, const FIntPoint& StartCoordinate, const FIntPoint& Range2D, int32 GridCol, const FuncT& Function);
+	
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	static void ItemHovered(UInv_InventoryComponent* InventoryComponent, UInv_InventoryItem* Item);
 	
@@ -45,16 +48,30 @@ public:
 template<typename T, typename FuncT>
 void UInv_InventoryStatics::ForEch2D(TArray<T>& Array, int32 Index, const FIntPoint& Range2D, int32 GridCol, const FuncT& Function)
 {
-	const FIntPoint StartPos = UInv_WidgetUtils::GetPositionFromIndex(Index, GridCol);
-	
-	for (int j = 0; j < Range2D.Y; ++j)
+	ForEach2D(Array, UInv_WidgetUtils::GetPositionFromIndex(Index, GridCol), Range2D, GridCol, Function);
+}
+
+template<typename T, typename FuncT>
+void UInv_InventoryStatics::ForEach2D(TArray<T>& Array, const FIntPoint& StartCoordinate, const FIntPoint& Range2D, int32 GridCol, const FuncT& Function)
+{
+	if (GridCol <= 0 || Array.Num() <= 0)
+		return;
+
+	const int32 GridRow = Array.Num() / GridCol;
+
+	for (int32 j = 0; j < Range2D.Y; ++j)
 	{
-		for (int i = 0; i < Range2D.X; ++i)
+		const int32 Y = StartCoordinate.Y + j;
+		if (Y < 0 || Y >= GridRow)
+			continue;
+
+		for (int32 i = 0; i < Range2D.X; ++i)
 		{
-			const FIntPoint Coordinates = StartPos + FIntPoint(i, j);
-			const int32 TileIndex = UInv_WidgetUtils::GetIndexFromPosition(Coordinates, GridCol);
-			if (Array.IsValidIndex(TileIndex))
-				Function(Array[TileIndex]);
+			const int32 X = StartCoordinate.X + i;
+			if (X < 0 || X >= GridCol)
+				continue;
+
+			Function(Array[UInv_WidgetUtils::GetIndexFromPosition(FIntPoint(X, Y), GridCol)]);
 		}
 	}
 }

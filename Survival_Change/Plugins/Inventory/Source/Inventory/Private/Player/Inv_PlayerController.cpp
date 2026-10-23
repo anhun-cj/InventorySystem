@@ -19,7 +19,7 @@ AInv_PlayerController::AInv_PlayerController()
 	PrimaryActorTick.bCanEverTick = true;
 	TraceLength = 500.f;
 	ItemTraceChannel = ECC_GameTraceChannel1;
-	
+
 	RequestComponent = CreateDefaultSubobject<UInv_RequestComponent>("RequestComponent");
 	OtherInventoryComponent = CreateDefaultSubobject<UInv_FindItemComponent>("OtherInventoryComponent");
 }
@@ -31,7 +31,11 @@ void AInv_PlayerController::BeginPlay()
 	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
 	if(IsValid(Subsystem))
 	{
-		Subsystem->AddMappingContext(DefaultIMC, 0);
+		for (UInputMappingContext* CurrentContext : DefaultIMC)
+		{
+			Subsystem->AddMappingContext(CurrentContext, 0);
+		}
+		
 		for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
 		{
 			Subsystem->AddMappingContext(CurrentContext, 0);
@@ -49,8 +53,6 @@ void AInv_PlayerController::BeginPlay()
 
 void AInv_PlayerController::PrimaryInteract()
 {
-	//UE_LOG(LogTemp, Log, TEXT("Primary Test"));
-	
 	if (!ThisActor.IsValid())
 		return;
 	UInv_ItemComponent* ItemComponent = ThisActor->FindComponentByClass<UInv_ItemComponent>();
@@ -59,18 +61,21 @@ void AInv_PlayerController::PrimaryInteract()
 		InventoryComponent->TryAddItem(ItemComponent);
 		return;
 	}
-	
+}
+
+void AInv_PlayerController::OpenInventory(bool bOpenItem)
+{
+	if (!ThisActor.IsValid())
+		return;
 	UInv_InventoryComponent* Inventory = ThisActor->FindComponentByClass<UInv_InventoryComponent>();
+	if (!bOpenItem && ThisActor->FindComponentByClass<UInv_ItemComponent>())
+		Inventory = OtherInventoryComponent;
 	if (IsValid(Inventory))
 	{
-		Inventory->ToggleInventoryMenu();
-		UInv_WareHouseWidget* WareHouseWidget = Cast<UInv_WareHouseWidget>(Inventory->GetInventoryMenu());
-		WareHouseWidget->InitWareHouseWidget(InventoryComponent.Get(), Inventory);
-		HUDWidget->SetVisibility(ESlateVisibility::Collapsed);
+		RequestComponent->OpenInventory(Inventory);
 		OpenInventoryComponent = Inventory;
 		return;
 	}
-	
 }
 
 void AInv_PlayerController::CreateHUDWidget()
@@ -140,11 +145,20 @@ void AInv_PlayerController::TraceForItem()
 	if (!ThisActor.IsValid())
 	{
 		if (IsValid(HUDWidget))
-			HUDWidget->HidePickUpMessage();
+		{
+			//HUDWidget->HidePickUpMessage();
+			HUDWidget->HideMessages();
+		}
 	}
 
 	if (LastActor == ThisActor)
+	{
 		return;
+	}
+	if (LastActor != ThisActor)
+	{
+		HUDWidget->ClearMessages();
+	}
 	if (ThisActor.IsValid())
 	{
 		UActorComponent* Highlightable = ThisActor->FindComponentByInterface(UInv_Highlightable::StaticClass());
@@ -154,11 +168,17 @@ void AInv_PlayerController::TraceForItem()
 		UInv_ItemComponent* ItemComponent = ThisActor->FindComponentByClass<UInv_ItemComponent>();
 		if (IsValid(ItemComponent) && IsValid(HUDWidget))
 		{
-			HUDWidget->ShowPickUpMessage(ItemComponent->GetPickUpMessage());
+			//HUDWidget->ShowPickUpMessage(ItemComponent->GetPickUpMessage());
+			HUDWidget->ShowMessages(ItemComponent->GetMessages());
 		}
 		else if (const AInv_Building* Building = Cast<AInv_Building>(ThisActor))
 		{
-			HUDWidget->ShowPickUpMessage(Building->GetOpenMessage());
+			//HUDWidget->ShowPickUpMessage(Building->GetOpenMessage());
+			HUDWidget->ShowMessages(Building->GetMessages());
+		}
+		else if (IsValid(HUDWidget))
+		{
+			HUDWidget->HideMessages();
 		}
 	}
 
@@ -180,6 +200,8 @@ void AInv_PlayerController::SetupInputComponent()
 	{
 		EnhancedInputComponent->BindAction(PrimaryInteractAction, ETriggerEvent::Started, this, &AInv_PlayerController::PrimaryInteract);
 		EnhancedInputComponent->BindAction(ToggleInventoryAction, ETriggerEvent::Started, this, &AInv_PlayerController::ToggleInventory);
+		EnhancedInputComponent->BindAction(OpenAction, ETriggerEvent::Started, this, &AInv_PlayerController::OpenInventory, false);
+		EnhancedInputComponent->BindAction(OpenItemAction, ETriggerEvent::Started, this, &AInv_PlayerController::OpenInventory, true);
 	}
 }
 
@@ -188,8 +210,6 @@ void AInv_PlayerController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if ((InventoryComponent.IsValid() && InventoryComponent->IsInventoryMenuOpen()) || (OpenInventoryComponent.IsValid() && OpenInventoryComponent->IsInventoryMenuOpen()))
 		return;
-	if (IsValid(HUDWidget))
-		HUDWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
 	TraceForItem();
 }
 
@@ -207,8 +227,4 @@ void AInv_PlayerController::ToggleInventory()
 	if (!InventoryComponent.IsValid() || (OpenInventoryComponent.IsValid() && OpenInventoryComponent->IsInventoryMenuOpen()))
 		return;
 	InventoryComponent->ToggleInventoryMenu();
-	if (InventoryComponent->IsInventoryMenuOpen())
-	{
-		HUDWidget->SetVisibility(ESlateVisibility::Collapsed);
-	}
 }

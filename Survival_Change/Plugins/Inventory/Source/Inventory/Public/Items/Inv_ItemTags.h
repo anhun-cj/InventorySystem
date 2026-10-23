@@ -8,27 +8,37 @@ namespace GameItems
 	{
 		namespace Weapons
 		{
-			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Axe)
-			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Sword)
-		}
-		//披风、斗篷
-		namespace Cloaks
-		{
-			UE_DECLARE_GAMEPLAY_TAG_EXTERN(RedCloak)
-		}
-		
-		//面具
-		namespace Masks
-		{
-			UE_DECLARE_GAMEPLAY_TAG_EXTERN(SteelMask)
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Weapon)
 		}
 
-		//装备槽
-		namespace Slot
+		namespace BackPacks
 		{
-			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Weapon)
-			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Back)
-			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Face)
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(BackPack)
+		}
+		
+		namespace ChestRigs
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(ChestRig)
+		}
+		
+		namespace Helmets
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Helmet)
+		}
+		
+		namespace ChestArmors
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(ChestArmor)
+		}
+		
+		namespace Pistols
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Pistol)
+		}
+		
+		namespace Knifes
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Knife)
 		}
 	}
 
@@ -64,7 +74,6 @@ namespace Item
 {
 	namespace Stat
 	{
-		UE_DECLARE_GAMEPLAY_TAG_EXTERN(AttackPower)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Strength)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Health)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Mana)

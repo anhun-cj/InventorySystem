@@ -24,6 +24,7 @@ public:
 	TArray<TInstancedStruct<FInv_ItemFragment>>& GetAllFragments() {return Fragments;};
 	
 	UInv_InventoryItem* Manifest(UObject* NewOuter);
+	UInv_InventoryItem* NewManifest(UObject* NewOuter) const;
 	
 	EInv_ItemCategory GetItemCategory() const { return ItemCategory;}
 	void SetItemCategory(EInv_ItemCategory InCategory) { ItemCategory = InCategory; }
@@ -89,10 +90,10 @@ private:
 	FName ItemId;
 
 	/** 生成该清单的物品资产软引用；掉落重生时据此把资产重新回传给拾取组件 */
-	UPROPERTY(EditAnywhere, Category = "Inventory")
+	UPROPERTY()
 	TSoftObjectPtr<UInv_ItemDefinition> SourceDefinition;
 
-	UPROPERTY(EditAnywhere, Category = "Inventory")
+	UPROPERTY()
 	TSubclassOf<AActor> PickupActorClass;
 	
 	void ClearFragments();

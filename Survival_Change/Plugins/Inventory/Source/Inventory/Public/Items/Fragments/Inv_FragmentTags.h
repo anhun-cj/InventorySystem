@@ -15,6 +15,10 @@ namespace FragmentTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(SellValueFragment)
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(RequiredLevelFragment)
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EquipmentFragment)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EquipmentEffectsFragment)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConsumeEffectsFragment)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CraftingMaterialsFragment)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AcquisitionSourcesFragment)
 
 	namespace StatMod
 	{

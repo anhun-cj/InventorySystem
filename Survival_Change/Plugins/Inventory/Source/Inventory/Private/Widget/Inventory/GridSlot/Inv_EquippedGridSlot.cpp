@@ -2,6 +2,7 @@
 
 
 #include "Widget/Inventory/GridSlot/Inv_EquippedGridSlot.h"
+#include "Widget/Inventory/Spatial/Inv_SpatialInventory.h"
 
 #include "Blueprint/DragDropOperation.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
@@ -11,6 +12,7 @@
 #include "Components/OverlaySlot.h"
 #include "InventoryManagement/Components/Inv_FindItemComponent.h"
 #include "InventoryManagement/Components/Inv_RequestComponent.h"
+#include "InventoryManagement/Components/Inv_InventoryComponent.h"
 #include "InventoryManagement/Utils/Inv_InventoryStatics.h"
 #include "Items/Inv_InventoryItem.h"
 #include "Items/Fragments/Inv_FragmentTags.h"
@@ -35,8 +37,6 @@ void UInv_EquippedGridSlot::NativeOnDragEnter(const FGeometry& InGeometry, const
 	UDragDropOperation* InOperation)
 {
 	Super::NativeOnDragEnter(InGeometry, InDragDropEvent, InOperation);
-	if (!IsAvailable())
-		return;
 	UInv_HoverItem* HoverItem = InventoryGrid->GetHoverSourceMenu()->GetHoverItem();
 	if (IsValid(HoverItem))
 	{
@@ -53,13 +53,7 @@ void UInv_EquippedGridSlot::NativeOnDragEnter(const FGeometry& InGeometry, const
 
 void UInv_EquippedGridSlot::NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
-	if (!IsAvailable())
-		return;
-	UInv_HoverItem* HoverItem = InventoryGrid->GetHoverSourceMenu()->GetHoverItem();
-	if (IsValid(HoverItem))
-	{
-		SetNormal();
-	}
+	SetNormal();
 }
 
 FReply UInv_EquippedGridSlot::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -71,41 +65,48 @@ FReply UInv_EquippedGridSlot::NativeOnMouseButtonDown(const FGeometry& InGeometr
 bool UInv_EquippedGridSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
 	UDragDropOperation* InOperation)
 {
-	APlayerController* PlayerController = GetOwningPlayer();
-	UInv_InventoryComponent* IC = UInv_InventoryStatics::GetInventoryComponent(PlayerController);
+	SetNormal();
 	UInv_HoverItem* HoverItem = Cast<UInv_HoverItem>(InOperation->Payload);
-	AInv_PlayerController* Controller = Cast<AInv_PlayerController>(PlayerController);
-	if (!Controller || !HoverItem || !InventoryGrid.IsValid())
+	if (!HoverItem || !InventoryGrid.IsValid())
 		return false;
-
 	UInv_InventoryItem* ItemToTransfer = HoverItem->GetInventoryItem();
 	if (!ItemToTransfer)
 		return false;
-	if (UInv_RequestComponent* RequestComp = Controller->FindComponentByClass<UInv_RequestComponent>())
+	if (HoverItem->GetPreviousGridIndex() == INDEX_NONE)
 	{
-		RequestComp->TransferItem(ItemToTransfer, InventoryGrid->GetResult(), InventoryGrid->GetItemDropIndex(), InventoryGrid->GetInventoryComponent());
+		InventoryGrid->GetHoverSourceMenu()->ClearHoverItem();
+		return true;
+	}
+	
+	if (ItemToTransfer->GetItemManifest().GetItemType().MatchesTag(EquipmentType))
+	{
+		UInv_EquippedSlotItem* PreviousItem = EquippedSlotItem;
+		HoverItem->GetGrid()->RemoveItem(ItemToTransfer);
+		OnItemEquipped(ItemToTransfer, InventoryGrid->GetTileSize());
+		InventoryGrid->GetHoverSourceMenu()->RemoveSlotItem(PreviousItem, InventoryGrid.Get());
 	}
 	InventoryGrid->GetHoverSourceMenu()->ClearHoverItem();
 	return true;
 }
 
-UInv_EquippedSlotItem* UInv_EquippedGridSlot::OnItemEquipped(UInv_InventoryItem* Item, const FGameplayTag& Tag,
+UInv_EquippedSlotItem* UInv_EquippedGridSlot::OnItemEquipped(UInv_InventoryItem* Item,
                                                              float TileSize)
 {
-	if (!EquipmentType.MatchesTagExact(Tag))
-		return nullptr;
-	
+	if (EquippedSlotItem)
+		EquippedSlotItem->RemoveFromParent();
 	const FInv_GridFragment* GridFragment = GetFragment<FInv_GridFragment>(Item, FragmentTags::GridFragment);
 	if (!GridFragment)
 		return nullptr;
-	const FIntPoint& Dimensions = GridFragment->GetGridSize();
 	
-	const float IconTileWidth = TileSize - GridFragment->GetGridPadding() * 2;
-	const FVector2D DrawSize = Dimensions * IconTileWidth;
+	// 画刷只提供物品占格比例，实际显示大小由装备槽内的 ScaleBox 随布局适配。
+	const FVector2D DrawSize = FVector2D(GridFragment->GetGridSize()) * TileSize;
 	
 	EquippedSlotItem = CreateWidget<UInv_EquippedSlotItem>(GetOwningPlayer(), EquippedSlotItemClass);
 	EquippedSlotItem->SetInventoryItem(Item);
-	EquippedSlotItem->SetEquipmentTag(Tag);
+	EquippedSlotItem->SetGridIndex(INDEX_NONE);
+	EquippedSlotItem->SetEquipmentTag(EquipmentType);
+	EquippedSlotItem->SetGridSlot(this);
+	EquippedSlotItem->SetInventoryGrid(InventoryGrid.Get());
 	EquippedSlotItem->UpDateStackCount(0);
 	SetInventoryItem(Item);
 	const FInv_ImageFragment* ImageFragment = GetFragment<FInv_ImageFragment>(Item, FragmentTags::IconFragment);
@@ -120,15 +121,11 @@ UInv_EquippedSlotItem* UInv_EquippedGridSlot::OnItemEquipped(UInv_InventoryItem*
 	
 	Overlay_Root->AddChildToOverlay(EquippedSlotItem);
 	
-	FGeometry OverLayGeometry = Overlay_Root->GetCachedGeometry();
-	auto OverLayPos = OverLayGeometry.Position;
-	auto OverLaySize = OverLayGeometry.Size;
-	const float LeftPadding = OverLaySize.X / 2 - DrawSize.X / 2;
-	const float TopPadding = OverLaySize.Y / 2 - DrawSize.Y / 2;
-	
 	if (UOverlaySlot* OverlaySlot = UWidgetLayoutLibrary::SlotAsOverlaySlot(EquippedSlotItem))
 	{
-		OverlaySlot->SetPadding(FMargin(LeftPadding, TopPadding));
+		OverlaySlot->SetHorizontalAlignment(HAlign_Fill);
+		OverlaySlot->SetVerticalAlignment(VAlign_Fill);
+		OverlaySlot->SetPadding(FMargin(GridFragment->GetGridPadding()));
 	}
 	
 	return EquippedSlotItem;

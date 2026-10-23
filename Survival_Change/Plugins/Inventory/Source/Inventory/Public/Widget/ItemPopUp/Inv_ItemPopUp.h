@@ -6,14 +6,15 @@
 #include "Blueprint/UserWidget.h"
 #include "Inv_ItemPopUp.generated.h"
 
+class UInv_InventoryItem;
 class USizeBox;
 class UTextBlock;
 class USlider;
 class UButton;
 
-DECLARE_DYNAMIC_DELEGATE_TwoParams(FPopUpMenuSplit, int32, SplitAmount, int32, Index);
-DECLARE_DYNAMIC_DELEGATE_OneParam(FPopUpMenuDrop, int32, Index);
-DECLARE_DYNAMIC_DELEGATE_OneParam(FPopUpMenuConsume, int32, Index);
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FPopUpMenuSplit, int32, SplitAmount, UInv_InventoryItem*, Item);
+DECLARE_DYNAMIC_DELEGATE_OneParam(FPopUpMenuDrop, UInv_InventoryItem*, Item);
+DECLARE_DYNAMIC_DELEGATE_OneParam(FPopUpMenuConsume, UInv_InventoryItem*, Item);
 
 UCLASS()
 class INVENTORY_API UInv_ItemPopUp : public UUserWidget
@@ -29,11 +30,14 @@ public:
 	
 	int32 GetSplitAmount() const;
 	void CollapseSplitButton() const;
+	void CollapseDropButton() const;
 	void CollapseConsumeButton() const;
 	void SetSliderParameters(const float Max, const float Value) const;
 	FVector2D GetBoxSize() const;
 	int32 GetGridIndex() const { return GridIndex; }
 	void SetGridIndex(int32 Index) { GridIndex = Index; }
+	
+	void SetInventoryItem(UInv_InventoryItem* InventoryItem);
 	
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -53,6 +57,8 @@ private:
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<USizeBox> SizeBox_Root;
+	
+	TWeakObjectPtr<UInv_InventoryItem> Item;
 	
 	int32 GridIndex{INDEX_NONE};
 	

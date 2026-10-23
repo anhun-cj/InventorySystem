@@ -7,6 +7,7 @@
 #include "Inv_SlottedItem.generated.h"
 
 
+class UInv_EquippedGridSlot;
 class UInv_ItemDescription;
 class UInv_ItemDefinition;
 class UInv_InventoryGrid;
@@ -15,7 +16,7 @@ class UTextBlock;
 class UInv_InventoryItem;
 class UImage;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FSlottedItemClicked, int32, GridIndex, const FPointerEvent&, MouseEvent);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSlottedItemClicked, UInv_InventoryItem*, Item);
 
 UCLASS()
 class INVENTORY_API UInv_SlottedItem : public UUserWidget
@@ -24,6 +25,7 @@ class INVENTORY_API UInv_SlottedItem : public UUserWidget
 public:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& Geometry, const FPointerEvent& MouseEvent) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
@@ -43,17 +45,10 @@ public:
 	void SetInventoryGrid(UInv_InventoryGrid* Grid);
 	
 	FSlottedItemClicked OnSlottedItemClicked;
-private:
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UImage> Image_Icon;
-	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
-	TSubclassOf<UInv_HoverItem> HoverItemClass;
-	
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> Text_StackCount;
 	
 	TWeakObjectPtr<UInv_InventoryGrid> InventoryGrid;
+protected:
+	TWeakObjectPtr<UInv_InventoryItem> InventoryItem;
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	TSubclassOf<UInv_ItemDescription> ItemDescriptionClass;
@@ -61,13 +56,20 @@ private:
 	UPROPERTY()
 	TObjectPtr<UInv_ItemDescription> ItemDescription;
 	
+	bool bIsMouseDown{false} ;
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TSubclassOf<UInv_HoverItem> HoverItemClass;
+private:
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> Image_Icon;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> Text_StackCount;
+	
 	int32 GridIndex;
 	
 	FIntPoint GridDimensions;
 	
-	TWeakObjectPtr<UInv_InventoryItem> InventoryItem;
-	
 	bool bIsStackable = false;
-	
-	bool bIsMouseDown{false} ;
 };

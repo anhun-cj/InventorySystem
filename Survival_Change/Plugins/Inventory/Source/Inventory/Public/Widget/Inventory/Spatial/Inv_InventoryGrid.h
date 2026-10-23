@@ -1,14 +1,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IContentBrowserSingleton.h"
 #include "Blueprint/UserWidget.h"
 #include "Types/Inv_GridTypes.h"
 #include "Inv_InventoryGrid.generated.h"
 
 class UWrapBox;
+class USizeBox;
+class UScrollBox;
 class UInv_ItemPopUp;
-enum class EInv_GridSlotState : uint8;
 class UInv_HoverItem;
 struct FGameplayTag;
 struct FInv_ImageFragment;
@@ -33,9 +33,8 @@ public:
 	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
 	
 	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_ItemComponent* ItemComponent, const bool bAllStackable = true);
+	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_InventoryItem* Item, const int32 StackAmountOverride = -1, const bool bAllStackable = true);
 	
-	void ShowCursor();
-	void HideCursor();
 	void SetOwningCanvasPanel(UCanvasPanel* Canvas);
 	void DropItem();
 	bool HasHoveredItem() const;
@@ -50,12 +49,17 @@ public:
 	UFUNCTION(BlueprintCallable)
 	int32 GetItemDropIndex() const{return ItemDropIndex;}
 	void UnHighlightSlots();
-	void BindInventoryEvent(UInv_InventoryComponent* Inventory);
+	void BindInventoryEvent(UInv_InventoryComponent* Inventory, UInv_InventoryItem* InContainerItem = nullptr, int32 InSubGridIndex = INDEX_NONE);
+	UInv_InventoryGrid* GetSubGrid(int32 Index) const;
 	void UnBindInventoryEvent();
+	UFUNCTION(BlueprintCallable)
 	UInv_InventoryComponent* GetInventoryComponent() const { return InventoryComponent.Get(); }
 	
 	void SetHoverSourceMenu(UInv_InventoryBase* InMenu);
-	UInv_InventoryBase* GetHoverSourceMenu() const {return HoverSourceMenu.Get();};
+	UInv_InventoryBase* GetHoverSourceMenu() const {return HoverSourceMenu.Get();}
+	
+	void AddItemToIndices(UInv_InventoryItem* Item, int32 GridIndex);
+	void AddItem();
 	
 	UFUNCTION()
 	void RemoveItem(UInv_InventoryItem* Item);
@@ -65,17 +69,40 @@ public:
 
 	void InitInventory();
 	void ClearInventory();
+	void CloseItemPopUp();
 	void ConstructGridSlots();
+	UFUNCTION(BlueprintPure)
 	int32 GetCol() const { return Col; }
+	UFUNCTION(BlueprintPure)
+	int32 GetRow() const { return Row; }
+	
+	
 private:
+	friend class UInv_SpatialInventory;
+	friend class UInv_SlottedItem;
+	friend class UInv_EquippedSlotItem;
+	friend class UInv_GridSlot;
+
+	// 外层生成整组布局；指定编号的子网格只生成自身格子。
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TSubclassOf<UInv_InventoryGrid> SubGridClass;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UInv_InventoryGrid>> SubGrids;
+
+	TWeakObjectPtr<UInv_InventoryGrid> ParentGrid;
+	int32 SubGridIndex = INDEX_NONE;
+	FVector2D LayoutSize = FVector2D::ZeroVector;
 
 	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
+	UPROPERTY()
+	TObjectPtr<UInv_InventoryItem> ContainerItem;
 	TWeakObjectPtr<UInv_InventoryBase> HoverSourceMenu;
 	TWeakObjectPtr<UCanvasPanel> OwningCanvasPanel;
 	
 	void ConstructGrid();
+	bool EnsureRows(int32 RequiredRows);
 	
-	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_InventoryItem* Item, const int32 StackAmountOverride = -1, const bool bAllStackable = true);
 	FInv_SlotAvailabilityResult HasRoomForItem(const FInv_ItemManifest& Manifest, const int32 StackAmountOverride = -1, const bool bAllStackable = true);
 	void AddItemToIndices(UInv_InventoryItem* Item);
 	bool MatchesCategory(UInv_InventoryItem* Item) const;
@@ -122,11 +149,9 @@ private:
 	FIntPoint CalculateStartingCoordinate(const FIntPoint& Coordinate, const FIntPoint& Dimensions, const EInv_TileQuadrant Quadrant) const;
 	FInv_SpaceQueryResult CheckHoverPosition(const FIntPoint& Position, const FIntPoint& Dimensions);
 	bool CursorExitedCanvas(const FVector2D& BoundaryPos, const FVector2D& BoundarySize, const FVector2D& Location);
-	void HighLightSlots(const int32 Index, const FIntPoint& Dimensions);
-	void UnHighlightSlots(const int32 Index, const FIntPoint& Dimensions);
+	void HighLightSlots(const FIntPoint& StartCoordinate, const FIntPoint& Dimensions);
+	void UnHighlightSlots(const FIntPoint& StartCoordinate, const FIntPoint& Dimensions);
 	void PutDownOnIndex(const int32 Index);
-	UUserWidget* GetVisibleCurUserWidget();
-	UUserWidget* GetHiddenCurUserWidget();
 	bool IsSameStackable(UInv_InventoryItem* ClickedInventoryItem) const;
 	void SwapWithHoverItem(UInv_InventoryItem* ClickedInventoryItem, const int32 GridIndex);
 	bool ShouldSwapStackCount(const int32 RoomInClickedSlot, const int32 HoveredStackCount, const int32 MaxStackCount) const;
@@ -135,11 +160,11 @@ private:
 	void ConsumeHoverItemStacks(const int32 ClickedStackCount, const int32 HoveredStackCount, const int32 Index);
 	bool ShouldFillInStack(const int32 HoveredStackCount, const int32 RoomInClickedSlot) const;
 	void FillInStack(const int32 FillAmount, const int32 Remainder, const int32 Index);
-	void CreateItemPopUp(const int32 GridIndex);
+	void CreateItemPopUp(UInv_InventoryItem* Item);
 	void PutHoverItemBack();
 	//检测移动位置附近物品是否可以交换
 	bool CheckHoverItemMoveItems(UInv_GridSlot* GridSlot, const FIntPoint& SourcePosition, const FIntPoint& SourceDimensions) const;
-	FIntPoint CalculateMoveItemPosition(UInv_GridSlot* GridSlot, const FVector2D& TargetPosition, const FVector2D& SourcePosition) const;
+	FIntPoint CalculateMoveItemPosition(const UInv_GridSlot* GridSlot, const FIntPoint& TargetPosition, const FIntPoint& SourcePosition) const;
 	
 	UPROPERTY()
 	TObjectPtr<UInv_ItemPopUp> ItemPopUp;
@@ -147,26 +172,17 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	TSubclassOf<UInv_ItemPopUp> ItemPopUpClass;
 	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
-	TSubclassOf<UUserWidget> VisibleCursorWidgetClass;
-	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
-	TSubclassOf<UUserWidget> HiddenCursorWidgetClass;
-	
-	UPROPERTY()
-	TObjectPtr<UUserWidget> VisibleCursorWidget;
-	
-	UPROPERTY()
-	TObjectPtr<UUserWidget> HiddenCursorWidget;
-	
 	UFUNCTION()
 	void OnItemChange(UInv_InventoryItem* Item);
+
+	UFUNCTION()
+	void OnScrollBarVisibilityChanged(ESlateVisibility NewVisibility);
 	
 	UFUNCTION()
 	void RemoveItemFormGrid(UInv_InventoryItem* InventoryItem, int32 GridIndex);
 	
 	UFUNCTION()
-	void OnSlottedItemClicked(int32 GridIndex, const FPointerEvent& MouseEvent);
+	void OnSlottedItemClicked(UInv_InventoryItem* Item);
 	
 	UFUNCTION()
 	void OnGridSlotClicked(int32 GridIndex, const FPointerEvent& MouseEvent);
@@ -178,13 +194,13 @@ private:
 	void OnGridSlotUnhovered(int32 GridIndex, const FPointerEvent& MouseEvent);
 
 	UFUNCTION()
-	void OnPopUpMenuSplit(int32 SplitAmount, int32 Index);
+	void OnPopUpMenuSplit(int32 SplitAmount, UInv_InventoryItem* Item);
 	
 	UFUNCTION()
-	void OnPopUpMenuDrop(int32 Index);
+	void OnPopUpMenuDrop(UInv_InventoryItem* Item);
 	
 	UFUNCTION()
-	void OnPopUpMenuConsume(int32 Index);
+	void OnPopUpMenuConsume(UInv_InventoryItem* Item);
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Inventory")
 	EInv_ItemCategory ItemCategory;
@@ -200,6 +216,12 @@ private:
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWrapBox> WrapBox_GridSlots;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<USizeBox> SizeBox_GridFrame;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UScrollBox> ScrollBox;
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	TSubclassOf<UInv_SlottedItem> SlottedItemClass;
@@ -207,13 +229,13 @@ private:
 	UPROPERTY()
 	TMap<int32, TObjectPtr<UInv_SlottedItem>> SlottedItems;
 	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
+	UPROPERTY()
 	int32 Row;//行
 
-	UPROPERTY(EditAnywhere, Category = "Inventory")
+	UPROPERTY()
 	int32 Col;//列
 
-	UPROPERTY(EditAnywhere, Category = "Inventory")
+	UPROPERTY()
 	float TileSize;
 	
 	UPROPERTY()
@@ -234,7 +256,7 @@ private:
 	bool bMouseWithinCanvas;
 	bool bLastMouseWithinCanvas;
 	
-	int32 LastHighlightedIndex{INDEX_NONE};
+	FIntPoint LastHighlightedCoordinate{INDEX_NONE, INDEX_NONE};
 	FIntPoint LastHighlightedDimensions;
 	
 	FTimerHandle TimerHandle;

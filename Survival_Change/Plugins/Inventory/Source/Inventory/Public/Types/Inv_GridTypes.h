@@ -23,6 +23,7 @@ struct FInv_SlotAvailability
 	FInv_SlotAvailability(int32 Index, int32 Room, bool bItemAtIndex, UInv_InventoryItem* InventoryItem);
 	
 	int32 Index = INDEX_NONE;
+	int32 SubGridIndex = 0;
 	int32 AmountToFill = 0;
 	bool bItemAtIndex = false;
 	TWeakObjectPtr<UInv_InventoryItem> Item = nullptr;
@@ -79,6 +80,8 @@ USTRUCT(BlueprintType)
 struct FInv_SpaceQueryResult
 {
 	GENERATED_BODY()
+	UPROPERTY()
+	int32 TargetSubGridIndex = 0;
 	//没有物品为真（RPC 参数，所有需网络传输的字段必须标记 UPROPERTY，否则到服务器为默认值）
 	UPROPERTY()
 	bool bHasSpace{false};

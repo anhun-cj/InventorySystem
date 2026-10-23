@@ -2,6 +2,7 @@
 
 #include "EquipmentManager/Components/Inv_EquipmentComponent.h"
 #include "GameFramework/Character.h"
+#include "Engine/LocalPlayer.h"
 
 
 AInv_ProxyActor::AInv_ProxyActor()
@@ -31,7 +32,13 @@ void AInv_ProxyActor::DelayInitializeOwner()
 		DelayInitialization();
 		return;
 	}
-	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	ULocalPlayer* LocalPlayer = World->GetFirstLocalPlayerFromController();
+	if (!IsValid(LocalPlayer))
+	{
+		DelayInitialization();
+		return;
+	}
+	APlayerController* PC = LocalPlayer->GetPlayerController(GetWorld());
 	if (!IsValid(PC))
 	{
 		DelayInitialization();
@@ -52,7 +59,8 @@ void AInv_ProxyActor::DelayInitializeOwner()
 	
 	SourceMesh = SkeletalMesh;
 	Mesh->SetSkeletalMesh(SkeletalMesh->GetSkeletalMeshAsset());
-	Mesh->SetAnimInstanceClass(SourceMesh->GetAnimInstance()->GetClass());
+	// 读取配置的动画类，未绑定动画蓝图时也能继续初始化代理与装备。
+	Mesh->SetAnimInstanceClass(SkeletalMesh->GetAnimClass());
 	EquipmentComponent->InitializeOwner(PC);
 }
 

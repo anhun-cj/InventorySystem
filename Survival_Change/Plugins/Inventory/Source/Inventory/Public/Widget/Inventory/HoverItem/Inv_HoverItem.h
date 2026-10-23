@@ -9,6 +9,7 @@
  * 物品悬停提示
  */
 
+class UInv_InventoryGrid;
 class UTextBlock;
 class UInv_InventoryItem;
 class UImage;
@@ -25,15 +26,21 @@ public:
 	int32 GetStackCount() const { return StackCount; }
 	bool IsStackable() const { return bIsStackable; }
 	void SetIsStackable(bool bStackable) ;
+	UFUNCTION(BlueprintPure)
 	int32 GetPreviousGridIndex() const { return PreviousGridIndex; }
 	void SetPreviousGridIndex(int32 Index) { PreviousGridIndex = Index; }
 	FIntPoint GetGridDimensions() const { return GridDimensions; }
 	void SetGridDimensions(const FIntPoint& Dimensions) { GridDimensions = Dimensions; }
 	UFUNCTION(BlueprintCallable)
 	UInv_InventoryItem* GetInventoryItem() const;
+	UFUNCTION(BlueprintCallable)
+	UInv_InventoryGrid* GetGrid() const { return Grid.Get(); }
+	void SetInventoryGrid(UInv_InventoryGrid* InventoryGrid);
 	void SetInventoryItem(UInv_InventoryItem* Item);
 	void SetCol(int32 Col) { SourceCol = Col; }
 	int32 GetCol() const { return SourceCol; }
+
+	FGameplayTag EquipmentType;
 private:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> Image_Icon;
@@ -43,9 +50,10 @@ private:
 	
 	int32 SourceCol;
 	
-	int32 PreviousGridIndex;
+	int32 PreviousGridIndex{INDEX_NONE};
 	FIntPoint GridDimensions;
 	TWeakObjectPtr<UInv_InventoryItem> InventoryItem;
+	TWeakObjectPtr<UInv_InventoryGrid> Grid;
 	bool bIsStackable{false};
 	int32 StackCount{0};
 };
